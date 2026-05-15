@@ -40,7 +40,9 @@ export default function App() {
   const getDateRange = useCallback(() => {
     const now = new Date();
     switch (period) {
-      case 'day':
+        const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return { start: today, end: now };
         return { start: subDays(now, 1), end: now };
       case 'week':
         return { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) };

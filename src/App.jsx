@@ -312,7 +312,7 @@ export default function App() {
             {/* SCRIPT COMPLIANCE */}
             <SectionHeader icon="📋" title="Realizacja skryptu NOWIMA" />
             <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 24, boxShadow: '0 2px 8px rgba(26,23,20,0.08)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 100px 100px', background: '#F9F8F5', padding: '10px 14px', borderBottom: `1px solid ${COLORS.border}' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 100px 100px', background: '#F9F8F5', padding: '10px 14px', borderBottom: `1px solid ${COLORS.border}` }}>
                 <div></div>
                 <div style={{ fontSize: 10, fontFamily: 'DM Mono', textTransform: 'uppercase', letterSpacing: '0.08em', color: COLORS.text3 }}>Krok skryptu</div>
                 <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: COLORS.beata, textAlign: 'center' }}>Beata</div>

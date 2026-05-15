@@ -32,7 +32,9 @@ const PIE_COLORS = ['#C0392B', '#C07A1A', '#1A7A4A', '#A09890', '#E8E4DC'];
 export default function App() {
   const [calls, setCalls] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState('day'); // day, week, month, all
+  const [period, setPeriod] = useState('day'); // day, week, month, all, custom
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
   const [selectedManager, setSelectedManager] = useState('all'); // all, beata, kamil
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [activeCall, setActiveCall] = useState(null);
@@ -40,12 +42,7 @@ export default function App() {
   const getDateRange = useCallback(() => {
     const now = new Date();
     switch (period) {
-case 'day': {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayUTC = new Date(today.getTime() - 2 * 60 * 60 * 1000);
-  return { start: todayUTC, end: now };
-}
+      case 'day':
         return { start: subDays(now, 1), end: now };
       case 'week':
         return { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) };
@@ -161,7 +158,7 @@ case 'day': {
 
           {/* Period selector */}
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            {['day', 'week', 'month', 'all'].map(p => (
+            {['day', 'week', 'month', 'all', 'custom'].map(p => (
               <button key={p} onClick={() => setPeriod(p)} style={{
                 padding: '4px 12px', borderRadius: 20, border: '1px solid',
                 borderColor: period === p ? COLORS.lime : 'rgba(255,255,255,0.2)',
@@ -169,9 +166,18 @@ case 'day': {
                 color: period === p ? COLORS.lime : 'rgba(255,255,255,0.7)',
                 fontSize: 11, fontFamily: 'DM Mono', cursor: 'pointer'
               }}>
-                {p === 'day' ? 'Dziś' : p === 'week' ? 'Tydzień' : p === 'month' ? 'Miesiąc' : 'Wszystko'}
+                {p === 'day' ? 'Dziś' : p === 'week' ? 'Tydzień' : p === 'month' ? 'Miesiąc' : p === 'all' ? 'Wszystko' : '📅 Własny'}
               </button>
             ))}
+            {period === 'custom' && (
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)}
+                  style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 11, fontFamily: 'DM Mono' }} />
+                <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>—</span>
+                <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)}
+                  style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: 11, fontFamily: 'DM Mono' }} />
+              </div>
+            )}
           </div>
 
           {/* Manager filter */}

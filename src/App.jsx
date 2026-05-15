@@ -43,7 +43,8 @@ export default function App() {
 case 'day': {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return { start: today, end: now };
+  const todayUTC = new Date(today.getTime() - 2 * 60 * 60 * 1000);
+  return { start: todayUTC, end: now };
 }
         return { start: subDays(now, 1), end: now };
       case 'week':

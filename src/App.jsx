@@ -292,8 +292,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* Click outside calendar to close */}
-      {showCalendar&&<div style={{position:'fixed',inset:0,zIndex:100}} onClick={()=>setShowCalendar(false)}/>}
+
 
       <div style={{maxWidth:1440,margin:'0 auto',padding:'24px 20px 80px'}}>
         {loading?(

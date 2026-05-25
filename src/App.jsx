@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, subWeeks, subMonths } from 'date-fns';
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL || '';
@@ -18,13 +18,15 @@ const C = {
 };
 
 export default function App() {
-  const [calls,setCalls]=useState([]);
-  const [prevCalls,setPrevCalls]=useState([]);
+  const [allData,setAllData]=useState([]);
+  const [prevData,setPrevData]=useState([]);
   const [loading,setLoading]=useState(true);
   const [period,setPeriod]=useState('day');
   const [customStart,setCustomStart]=useState('');
   const [customEnd,setCustomEnd]=useState('');
+  const [showCalendar,setShowCalendar]=useState(false);
   const [mgr,setMgr]=useState('all');
+  const [source,setSource]=useState('calls'); // calls, meetings, all
   const [lastUpdate,setLastUpdate]=useState(new Date());
   const [activeCall,setActiveCall]=useState(null);
   const [view,setView]=useState('dashboard');
@@ -37,6 +39,12 @@ export default function App() {
       return{start:new Date(customStart),end:new Date(customEnd+'T23:59:59')};
     }
     switch(period){
+      case 'yesterday':{
+        const d=subDays(now,1+offset);
+        const s=new Date(d);s.setHours(0,0,0,0);
+        const e=new Date(d);e.setHours(23,59,59,999);
+        return{start:s,end:e};
+      }
       case 'day':{
         const d=subDays(now,offset);
         const s=new Date(d);s.setHours(0,0,0,0);
@@ -68,8 +76,8 @@ export default function App() {
       .gte('call_time',ps.toISOString())
       .lte('call_time',pe.toISOString());
     const[{data},{data:pd}]=await Promise.all([q,pq]);
-    if(data){setCalls(data);setLastUpdate(new Date());}
-    if(pd)setPrevCalls(pd);
+    if(data){setAllData(data);setLastUpdate(new Date());}
+    if(pd)setPrevData(pd);
     setLoading(false);
   },[getRange,mgr]);
 
@@ -78,14 +86,28 @@ export default function App() {
   useEffect(()=>{
     const sub=supabase.channel('calls')
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'calls'},(p)=>{
-        setCalls(prev=>[p.new,...prev]);
+        setAllData(prev=>[p.new,...prev]);
         setLastUpdate(new Date());
-        const m=p.new.sip==='123'?'Beata':'Kamil';
-        setNotif(`Nowa rozmowa: ${m} · ${p.new.duration}s · ${p.new.wynik||'—'}`);
+        const isMeeting=p.new.sip==='meeting';
+        const m=isMeeting?`🎥 ${p.new.manager}`:(p.new.sip==='123'?'Beata':'Kamil');
+        setNotif(`${isMeeting?'🎥':'📞'} ${m} · ${p.new.klient||''} · ${p.new.wynik||'—'}`);
         setTimeout(()=>setNotif(null),8000);
       }).subscribe();
     return()=>sub.unsubscribe();
   },[]);
+
+  // Filter by source
+  const calls=useMemo(()=>{
+    if(source==='calls') return allData.filter(c=>c.sip!=='meeting');
+    if(source==='meetings') return allData.filter(c=>c.sip==='meeting');
+    return allData;
+  },[allData,source]);
+
+  const prevCalls=useMemo(()=>{
+    if(source==='calls') return prevData.filter(c=>c.sip!=='meeting');
+    if(source==='meetings') return prevData.filter(c=>c.sip==='meeting');
+    return prevData;
+  },[prevData,source]);
 
   const filtered=useMemo(()=>{
     if(!search)return calls;
@@ -98,17 +120,20 @@ export default function App() {
     );
   },[calls,search]);
 
-  const beata=calls.filter(c=>c.sip==='123');
-  const kamil=calls.filter(c=>c.sip==='119');
-  const over60=calls.filter(c=>c.duration>60);
-  const over180=calls.filter(c=>c.duration>180);
-  const lpr=calls.filter(c=>c.lpr);
+  // Phone calls only stats
+  const phoneCalls=allData.filter(c=>c.sip!=='meeting');
+  const videoMeetings=allData.filter(c=>c.sip==='meeting');
+  const beata=phoneCalls.filter(c=>c.sip==='123');
+  const kamil=phoneCalls.filter(c=>c.sip==='119');
+  const over60=phoneCalls.filter(c=>c.duration>60);
+  const over180=phoneCalls.filter(c=>c.duration>180);
+  const lpr=phoneCalls.filter(c=>c.lpr);
   const hot=calls.filter(c=>c.wynik==='gorący lead');
   const pilne=calls.filter(c=>c.pilne);
-  const meetings=calls.filter(c=>c.checklist_zoom);
-  const bots=calls.filter(c=>c.wynik==='bot/automat');
-  const secs=calls.filter(c=>c.wynik==='sekretariat');
-  const followup=calls.filter(c=>c.checklist_nastepny_krok);
+  const meetingsZoom=phoneCalls.filter(c=>c.checklist_zoom);
+  const bots=phoneCalls.filter(c=>c.wynik==='bot/automat'||c.wynik==='bot');
+  const secs=phoneCalls.filter(c=>c.wynik==='sekretariat');
+  const followup=phoneCalls.filter(c=>c.checklist_nastepny_krok);
   const lprConv=over60.length>0?Math.round(lpr.length/over60.length*100):0;
   const secConv=secs.length>0?Math.round(lpr.length/secs.length*100):0;
   const prevLpr=prevCalls.filter(c=>c.lpr).length;
@@ -127,17 +152,17 @@ export default function App() {
 
   const trendData=useMemo(()=>{
     const days={};
-    calls.forEach(c=>{
+    phoneCalls.forEach(c=>{
       if(!c.call_time)return;
       const day=format(parseISO(c.call_time),'dd.MM');
-      if(!days[day])days[day]={day,total:0,lpr:0,hot:0,meetings:0};
+      if(!days[day])days[day]={day,total:0,lpr:0,hot:0,bots:0};
       days[day].total++;
       if(c.lpr)days[day].lpr++;
       if(c.wynik==='gorący lead')days[day].hot++;
-      if(c.checklist_zoom)days[day].meetings++;
+      if(c.wynik==='bot/automat'||c.wynik==='bot')days[day].bots++;
     });
     return Object.values(days).sort((a,b)=>a.day.localeCompare(b.day));
-  },[calls]);
+  },[phoneCalls]);
 
   const scriptItems=[
     {key:'checklist_przedstawil',label:'Przedstawił się'},
@@ -181,12 +206,14 @@ export default function App() {
     return{value:Math.abs(d),up:d>=0};
   };
 
-  const btnStyle=(active)=>({
+  const btnStyle=(active,color)=>({
     padding:'4px 10px',borderRadius:20,border:'1px solid',cursor:'pointer',fontSize:11,fontFamily:'DM Mono',
-    borderColor:active?C.lime:'rgba(255,255,255,0.2)',
-    background:active?'rgba(209,233,37,0.15)':'transparent',
-    color:active?C.lime:'rgba(255,255,255,0.65)',
+    borderColor:active?(color||C.lime):'rgba(255,255,255,0.2)',
+    background:active?`rgba(${color?'209,233,37':'209,233,37'},0.15)`:'transparent',
+    color:active?(color||C.lime):'rgba(255,255,255,0.65)',
   });
+
+  const periodLabel={day:'Dziś',yesterday:'Wczoraj',week:'Tydzień',month:'Miesiąc',all:'Wszystko',custom:'📅 Własny'};
 
   return(
     <div style={{fontFamily:"'DM Sans',sans-serif",background:C.bg,minHeight:'100vh',color:C.text}}>
@@ -194,46 +221,79 @@ export default function App() {
 
       {notif&&(
         <div style={{position:'fixed',top:70,right:20,zIndex:1000,background:C.nowima,color:'white',padding:'12px 20px',borderRadius:10,boxShadow:'0 4px 20px rgba(90,23,30,0.4)',fontSize:13,fontFamily:'DM Mono',maxWidth:360,borderLeft:`4px solid ${C.lime}`}}>
-          📞 {notif}
+          {notif}
         </div>
       )}
 
       <header style={{background:C.nowima,position:'sticky',top:0,zIndex:100,boxShadow:'0 2px 12px rgba(90,23,30,0.3)',borderBottom:'2px solid rgba(209,233,37,0.3)'}}>
-        <div style={{maxWidth:1440,margin:'0 auto',padding:'0 20px',height:56,display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+        <div style={{maxWidth:1440,margin:'0 auto',padding:'0 20px',minHeight:56,display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',paddingTop:8,paddingBottom:8}}>
           <div style={{display:'flex',alignItems:'center',gap:10,marginRight:4}}>
             <div style={{background:'rgba(209,233,37,0.15)',border:'1px solid rgba(209,233,37,0.3)',borderRadius:6,padding:'4px 10px',fontFamily:'Outfit',fontWeight:700,fontSize:15,color:C.lime,letterSpacing:1}}>NOWIMA</div>
             <span style={{fontSize:11,color:'rgba(255,255,255,0.5)',fontFamily:'DM Mono'}}>Analytics</span>
           </div>
+
+          {/* View tabs */}
           <div style={{display:'flex',gap:4}}>
             {[['dashboard','📊 Dashboard'],['calls','📞 Rozmowy'],['trends','📈 Trendy']].map(([v,l])=>(
               <button key={v} onClick={()=>setView(v)} style={btnStyle(view===v)}>{l}</button>
             ))}
           </div>
-          <div style={{display:'flex',gap:4}}>
-            {[['day','Dziś'],['week','Tydzień'],['month','Miesiąc'],['all','Wszystko'],['custom','📅']].map(([p,l])=>(
-              <button key={p} onClick={()=>setPeriod(p)} style={btnStyle(period===p)}>{l}</button>
+
+          {/* Source filter */}
+          <div style={{display:'flex',gap:4,borderLeft:'1px solid rgba(255,255,255,0.15)',paddingLeft:8}}>
+            {[['all','📊 Wszystko'],['calls','📞 Rozmowy'],['meetings','🎥 Spotkania']].map(([s,l])=>(
+              <button key={s} onClick={()=>setSource(s)} style={btnStyle(source===s)}>{l}</button>
             ))}
-            {period==='custom'&&(
-              <>
-                <input type="date" value={customStart} onChange={e=>setCustomStart(e.target.value)} style={{padding:'3px 8px',borderRadius:6,border:'1px solid rgba(255,255,255,0.3)',background:'rgba(255,255,255,0.1)',color:'white',fontSize:11,fontFamily:'DM Mono'}}/>
-                <span style={{color:'rgba(255,255,255,0.4)',alignSelf:'center'}}>—</span>
-                <input type="date" value={customEnd} onChange={e=>setCustomEnd(e.target.value)} style={{padding:'3px 8px',borderRadius:6,border:'1px solid rgba(255,255,255,0.3)',background:'rgba(255,255,255,0.1)',color:'white',fontSize:11,fontFamily:'DM Mono'}}/>
-              </>
-            )}
           </div>
+
+          {/* Period */}
+          <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+            {[['yesterday','Wczoraj'],['day','Dziś'],['week','Tydzień'],['month','Miesiąc'],['all','Wszystko']].map(([p,l])=>(
+              <button key={p} onClick={()=>{setPeriod(p);setShowCalendar(false);}} style={btnStyle(period===p)}>{l}</button>
+            ))}
+            <div style={{position:'relative'}}>
+              <button onClick={()=>{setPeriod('custom');setShowCalendar(!showCalendar);}} style={btnStyle(period==='custom')}>📅</button>
+              {showCalendar&&(
+                <div style={{position:'absolute',top:36,left:0,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:16,zIndex:200,boxShadow:'0 8px 24px rgba(0,0,0,0.15)',minWidth:280}}>
+                  <div style={{fontSize:11,fontFamily:'DM Mono',color:C.text3,marginBottom:8,textTransform:'uppercase'}}>Wybierz zakres dat</div>
+                  <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                    <div>
+                      <div style={{fontSize:11,color:C.text3,marginBottom:4}}>Od:</div>
+                      <input type="date" value={customStart} onChange={e=>setCustomStart(e.target.value)}
+                        style={{width:'100%',padding:'8px 10px',borderRadius:6,border:`1px solid ${C.border}`,fontSize:12,fontFamily:'DM Mono',outline:'none',color:C.text,boxSizing:'border-box'}}/>
+                    </div>
+                    <div>
+                      <div style={{fontSize:11,color:C.text3,marginBottom:4}}>Do:</div>
+                      <input type="date" value={customEnd} onChange={e=>setCustomEnd(e.target.value)}
+                        style={{width:'100%',padding:'8px 10px',borderRadius:6,border:`1px solid ${C.border}`,fontSize:12,fontFamily:'DM Mono',outline:'none',color:C.text,boxSizing:'border-box'}}/>
+                    </div>
+                    <button onClick={()=>setShowCalendar(false)} style={{padding:'8px',borderRadius:6,background:C.nowima,color:'white',border:'none',cursor:'pointer',fontSize:12,fontFamily:'DM Mono'}}>
+                      ✓ Zastosuj
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Manager filter */}
           <div style={{display:'flex',gap:4}}>
             {[['all','Wszyscy'],['beata','Beata'],['kamil','Kamil']].map(([m,l])=>(
               <button key={m} onClick={()=>setMgr(m)} style={btnStyle(mgr===m)}>{l}</button>
             ))}
           </div>
+
           <div style={{marginLeft:'auto',display:'flex',gap:8,alignItems:'center'}}>
-            {hot.length>0&&<span style={{fontSize:11,padding:'3px 10px',borderRadius:20,border:`1px solid ${C.lime}`,color:C.lime,background:'rgba(209,233,37,0.1)',fontFamily:'DM Mono'}}>🔥 {hot.length} gorących</span>}
-            {meetings.length===0&&calls.length>0&&<span style={{fontSize:11,padding:'3px 10px',borderRadius:20,border:'1px solid #F5C0BB',color:'#F5C0BB',background:'rgba(192,57,43,0.15)',fontFamily:'DM Mono'}}>⚠️ 0 spotkań</span>}
+            {hot.length>0&&<span style={{fontSize:11,padding:'3px 10px',borderRadius:20,border:`1px solid ${C.lime}`,color:C.lime,background:'rgba(209,233,37,0.1)',fontFamily:'DM Mono'}}>🔥 {hot.length}</span>}
+            {bots.length>0&&<span style={{fontSize:11,padding:'3px 10px',borderRadius:20,border:'1px solid #F5D89A',color:'#C07A1A',background:'rgba(192,122,26,0.1)',fontFamily:'DM Mono'}}>🤖 {bots.length}</span>}
             <button onClick={exportCSV} style={{padding:'4px 10px',borderRadius:20,border:'1px solid rgba(255,255,255,0.2)',background:'transparent',color:'rgba(255,255,255,0.6)',fontSize:11,fontFamily:'DM Mono',cursor:'pointer'}}>⬇ CSV</button>
             <span style={{fontSize:10,color:'rgba(255,255,255,0.3)',fontFamily:'DM Mono'}}>↻ {format(lastUpdate,'HH:mm')}</span>
           </div>
         </div>
       </header>
+
+      {/* Click outside calendar to close */}
+      {showCalendar&&<div style={{position:'fixed',inset:0,zIndex:100}} onClick={()=>setShowCalendar(false)}/>}
 
       <div style={{maxWidth:1440,margin:'0 auto',padding:'24px 20px 80px'}}>
         {loading?(
@@ -242,53 +302,92 @@ export default function App() {
           <>
             {view==='dashboard'&&(
               <>
-                {meetings.length===0&&calls.length>0&&(
+                {meetingsZoom.length===0&&phoneCalls.length>0&&source!=='meetings'&&(
                   <Alert color={C.red} border={C.redBorder} bg={C.redLight}>
                     🚨 <strong>Krytyczna luka:</strong> Brak umówionych spotkań online. Bez spotkania nie ma oferty.
                   </Alert>
                 )}
-                {bots.length/Math.max(calls.length,1)>0.25&&(
+                {bots.length>0&&phoneCalls.length>0&&bots.length/phoneCalls.length>0.2&&(
                   <Alert color={C.amber} border={C.amberBorder} bg={C.amberLight}>
-                    ⚠️ <strong>Wysoki % botów:</strong> {Math.round(bots.length/calls.length*100)}% rozmów to automaty.
+                    🤖 <strong>Boty/automaty:</strong> {bots.length} połączeń ({Math.round(bots.length/phoneCalls.length*100)}%) to automaty.
                   </Alert>
                 )}
 
-                <Sec icon="📊" title="Kluczowe wskaźniki"/>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:12}}>
-                  <KpiCard label="Wszystkie rozmowy" value={calls.length} sub={`B: ${beata.length} · K: ${kamil.length}`} accent={C.nowima} d={delta(calls.length,prevCalls.length)}/>
-                  <KpiCard label="Rozmowy powyżej 60s" value={over60.length} sub={`B: ${beata.filter(c=>c.duration>60).length} · K: ${kamil.filter(c=>c.duration>60).length}`} accent={C.nowima} d={delta(over60.length,prevCalls.filter(c=>c.duration>60).length)}/>
-                  <KpiCard label="Kontakty z ŁPR" value={lpr.length} sub={`B: ${beata.filter(c=>c.lpr).length} · K: ${kamil.filter(c=>c.lpr).length}`} accent={C.green} good d={delta(lpr.length,prevLpr)}/>
-                  <KpiCard label="Konwersja ŁPR z >60s" value={`${lprConv}%`} sub={`${lpr.length} z ${over60.length} rozmów`} accent={C.green} good/>
-                </div>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:10,marginBottom:24}}>
-                  <KpiSm label="Powyżej 180s" value={over180.length} sub={`B:${beata.filter(c=>c.duration>180).length} K:${kamil.filter(c=>c.duration>180).length}`}/>
-                  <KpiSm label="Follow-up" value={followup.length} sub={`B:${beata.filter(c=>c.checklist_nastepny_krok).length} K:${kamil.filter(c=>c.checklist_nastepny_krok).length}`}/>
-                  <KpiSm label="Konw. follow-up" value={over60.length>0?`${Math.round(followup.length/over60.length*100)}%`:'—'} sub={`${followup.length} z ${over60.length}`} good/>
-                  <KpiSm label="Sekretariat" value={secs.length} sub={`B:${beata.filter(c=>c.wynik==='sekretariat').length} K:${kamil.filter(c=>c.wynik==='sekretariat').length}`}/>
-                  <KpiSm label="Konw. od sekr." value={`${secConv}%`} sub={`${lpr.length} przełączeń`} good/>
-                  <KpiSm label="Bot/automat" value={bots.length} sub={`${calls.length>0?Math.round(bots.length/calls.length*100):0}% wszystkich`} danger={bots.length/Math.max(calls.length,1)>0.15}/>
-                </div>
+                {/* OVERVIEW - shared metrics */}
+                <Sec icon="📊" title={`Kluczowe wskaźniki · ${periodLabel[period]||'Własny'}`}/>
 
-                <Sec icon="🔽" title="Lejek sprzedażowy"/>
-                <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,overflow:'hidden',marginBottom:16}}>
-                  <div style={{display:'flex'}}>
-                    {[
-                      {l:'Rozmowy',v:calls.length,p:'100%',col:C.nowima},
-                      {l:'Z ŁPR',v:lpr.length,p:calls.length>0?`${Math.round(lpr.length/calls.length*100)}%`:'—',col:C.text},
-                      {l:'Zainteresowani',v:calls.filter(c=>c.wynik==='zainteresowany').length,p:'—',col:C.nowima,bg:'#F4ECED'},
-                      {l:'Gorące leady',v:hot.length,p:'—',col:C.red,bg:C.redLight},
-                      {l:'Spotkanie',v:meetings.length,p:'—',col:C.text3,dim:meetings.length===0},
-                      {l:'Oferta',v:0,p:'—',col:C.text3,dim:true},
-                    ].map((s,i)=>(
-                      <div key={i} style={{flex:1,padding:'14px 10px',textAlign:'center',borderRight:i<5?`1px solid ${C.border}`:'none',background:s.bg||C.surface,opacity:s.dim?0.4:1}}>
-                        <div style={{fontFamily:'Outfit',fontWeight:700,fontSize:26,color:s.col}}>{s.v}</div>
-                        <div style={{fontSize:9,textTransform:'uppercase',letterSpacing:'0.08em',color:C.text3,margin:'4px 0',fontFamily:'DM Mono'}}>{s.l}</div>
-                        <div style={{fontSize:10,color:C.text2}}>{s.p}</div>
+                {/* If showing all or calls */}
+                {source!=='meetings'&&(
+                  <>
+                    <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:8}}>
+                      <span style={{fontSize:11,fontFamily:'DM Mono',color:C.text3,textTransform:'uppercase',letterSpacing:'0.08em'}}>📞 Rozmowy telefoniczne</span>
+                    </div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:12}}>
+                      <KpiCard label="Wszystkie rozmowy" value={phoneCalls.length} sub={`B: ${beata.length} · K: ${kamil.length}`} accent={C.nowima} d={delta(phoneCalls.length,prevData.filter(c=>c.sip!=='meeting').length)}/>
+                      <KpiCard label="Rozmowy powyżej 60s" value={over60.length} sub={`B: ${beata.filter(c=>c.duration>60).length} · K: ${kamil.filter(c=>c.duration>60).length}`} accent={C.nowima}/>
+                      <KpiCard label="Kontakty z ŁPR" value={lpr.length} sub={`B: ${beata.filter(c=>c.lpr).length} · K: ${kamil.filter(c=>c.lpr).length}`} accent={C.green} good d={delta(lpr.length,prevLpr)}/>
+                      <KpiCard label="Konwersja ŁPR z >60s" value={`${lprConv}%`} sub={`${lpr.length} z ${over60.length} rozmów`} accent={C.green} good/>
+                    </div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:10,marginBottom:24}}>
+                      <KpiSm label="Powyżej 180s" value={over180.length} sub={`B:${beata.filter(c=>c.duration>180).length} K:${kamil.filter(c=>c.duration>180).length}`}/>
+                      <KpiSm label="Follow-up" value={followup.length} sub={`B:${beata.filter(c=>c.checklist_nastepny_krok).length} K:${kamil.filter(c=>c.checklist_nastepny_krok).length}`}/>
+                      <KpiSm label="Konw. follow-up" value={over60.length>0?`${Math.round(followup.length/over60.length*100)}%`:'—'} sub={`${followup.length} z ${over60.length}`} good/>
+                      <KpiSm label="Sekretariat" value={secs.length} sub={`B:${beata.filter(c=>c.wynik==='sekretariat').length} K:${kamil.filter(c=>c.wynik==='sekretariat').length}`}/>
+                      <KpiSm label="Konw. od sekr." value={`${secConv}%`} sub={`${lpr.length} przełączeń`} good/>
+                      <KpiSm label="Bot/automat" value={bots.length} sub={`${phoneCalls.length>0?Math.round(bots.length/phoneCalls.length*100):0}% wszystkich`} danger={bots.length/Math.max(phoneCalls.length,1)>0.15}/>
+                    </div>
+                  </>
+                )}
+
+                {/* Video meetings section */}
+                {source!=='calls'&&videoMeetings.length>0&&(
+                  <>
+                    <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:8}}>
+                      <span style={{fontSize:11,fontFamily:'DM Mono',color:C.text3,textTransform:'uppercase',letterSpacing:'0.08em'}}>🎥 Spotkania wideo</span>
+                    </div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:24}}>
+                      <KpiCard label="Spotkania łącznie" value={videoMeetings.length} sub={`B: ${videoMeetings.filter(c=>c.manager==='Beata Janoszka').length} · K: ${videoMeetings.filter(c=>c.manager==='Kamil Wisniewski').length}`} accent={C.kamil}/>
+                      <KpiCard label="Wysoki potencjał" value={videoMeetings.filter(c=>c.wynik==='wysoki'||c.wynik==='sukces'||c.wynik==='częściowy sukces').length} sub="sukces lub częściowy sukces" accent={C.green} good/>
+                      <KpiCard label="Gorące leady" value={videoMeetings.filter(c=>c.wynik==='gorący lead').length} sub="z videorozmów" accent={C.red}/>
+                      <KpiCard label="Śr. ocena spotkań" value={videoMeetings.length>0?(videoMeetings.reduce((s,c)=>s+(c.ocena||0),0)/videoMeetings.length).toFixed(1):'—'} sub="z 5 możliwych" accent={C.amber}/>
+                    </div>
+
+                    {/* Video meetings list */}
+                    <Sec icon="🎥" title="Spotkania wideo z klientami" badge={videoMeetings.length}/>
+                    <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:24}}>
+                      {videoMeetings.slice(0,10).map(c=>(
+                        <MeetingCard key={c.id} meeting={c} isOpen={activeCall===c.id} onToggle={()=>setActiveCall(activeCall===c.id?null:c.id)}/>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {/* Funnel - only for calls */}
+                {source!=='meetings'&&(
+                  <>
+                    <Sec icon="🔽" title="Lejek sprzedażowy"/>
+                    <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,overflow:'hidden',marginBottom:16}}>
+                      <div style={{display:'flex'}}>
+                        {[
+                          {l:'Rozmowy',v:phoneCalls.length,p:'100%',col:C.nowima},
+                          {l:'Z ŁPR',v:lpr.length,p:phoneCalls.length>0?`${Math.round(lpr.length/phoneCalls.length*100)}%`:'—',col:C.text},
+                          {l:'Zainteresowani',v:phoneCalls.filter(c=>c.wynik==='zainteresowany').length,p:'—',col:C.nowima,bg:'#F4ECED'},
+                          {l:'Gorące leady',v:hot.length,p:'—',col:C.red,bg:C.redLight},
+                          {l:'Spotkanie',v:meetingsZoom.length,p:'—',col:C.text3,dim:meetingsZoom.length===0},
+                          {l:'Oferta',v:0,p:'—',col:C.text3,dim:true},
+                        ].map((s,i)=>(
+                          <div key={i} style={{flex:1,padding:'14px 10px',textAlign:'center',borderRight:i<5?`1px solid ${C.border}`:'none',background:s.bg||C.surface,opacity:s.dim?0.4:1}}>
+                            <div style={{fontFamily:'Outfit',fontWeight:700,fontSize:26,color:s.col}}>{s.v}</div>
+                            <div style={{fontSize:9,textTransform:'uppercase',letterSpacing:'0.08em',color:C.text3,margin:'4px 0',fontFamily:'DM Mono'}}>{s.l}</div>
+                            <div style={{fontSize:10,color:C.text2}}>{s.p}</div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </div>
+                  </>
+                )}
 
+                {/* Hot leads */}
                 {hot.length>0&&(
                   <>
                     <Sec icon="🔥" title="Gorące leady i pilne działania" badge={hot.length}/>
@@ -300,62 +399,68 @@ export default function App() {
                   </>
                 )}
 
-                <Sec icon="👥" title="Porównanie menedżerów"/>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:24}}>
-                  <MgrCard manager="Beata Janoszka" sip="123" calls={beata} color={C.beata}/>
-                  <MgrCard manager="Kamil Wisniewski" sip="119" calls={kamil} color={C.kamil}/>
-                </div>
+                {/* Manager comparison - calls only */}
+                {source!=='meetings'&&(
+                  <>
+                    <Sec icon="👥" title="Porównanie menedżerów"/>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:24}}>
+                      <MgrCard manager="Beata Janoszka" sip="123" calls={beata} color={C.beata}/>
+                      <MgrCard manager="Kamil Wisniewski" sip="119" calls={kamil} color={C.kamil}/>
+                    </div>
 
-                <Sec icon="📋" title="Realizacja skryptu NOWIMA + SPIN"/>
-                <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,overflow:'hidden',marginBottom:24}}>
-                  <div style={{display:'grid',gridTemplateColumns:'28px 1fr 100px 100px',background:C.surface2,padding:'10px 14px',borderBottom:`1px solid ${C.border}`}}>
-                    <div/><div style={{fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',letterSpacing:'0.08em',color:C.text3}}>Krok skryptu</div>
-                    <div style={{fontSize:10,fontFamily:'DM Mono',color:C.beata,textAlign:'center'}}>Beata</div>
-                    <div style={{fontSize:10,fontFamily:'DM Mono',color:C.kamil,textAlign:'center'}}>Kamil</div>
-                  </div>
-                  {scriptItems.map(item=>{
-                    const bp=beata.length>0?Math.round(beata.filter(c=>c[item.key]).length/beata.length*100):0;
-                    const kp=kamil.length>0?Math.round(kamil.filter(c=>c[item.key]).length/kamil.length*100):0;
-                    return(
-                      <div key={item.key} style={{display:'grid',gridTemplateColumns:'28px 1fr 100px 100px',borderBottom:`1px solid ${C.border}`,alignItems:'center'}}>
-                        <div style={{textAlign:'center',padding:'12px 8px',fontSize:13}}>{bp>=70&&kp>=70?'✅':bp<40||kp<40?'🔴':'⚠️'}</div>
-                        <div style={{padding:'12px 14px',fontSize:12,color:C.text2}}>{item.label}</div>
-                        <div style={{padding:'10px 8px',textAlign:'center'}}>
-                          <div style={{fontSize:13,color:bp>=70?C.green:C.red}}>{bp>=70?'✓':'✗'}</div>
-                          <div style={{fontSize:10,fontFamily:'DM Mono',color:C.beata}}>{bp}%</div>
-                        </div>
-                        <div style={{padding:'10px 8px',textAlign:'center'}}>
-                          <div style={{fontSize:13,color:kp>=70?C.green:C.red}}>{kp>=70?'✓':'✗'}</div>
-                          <div style={{fontSize:10,fontFamily:'DM Mono',color:C.kamil}}>{kp}%</div>
-                        </div>
+                    <Sec icon="📋" title="Realizacja skryptu NOWIMA + SPIN"/>
+                    <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,overflow:'hidden',marginBottom:24}}>
+                      <div style={{display:'grid',gridTemplateColumns:'28px 1fr 100px 100px',background:C.surface2,padding:'10px 14px',borderBottom:`1px solid ${C.border}`}}>
+                        <div/><div style={{fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',letterSpacing:'0.08em',color:C.text3}}>Krok skryptu</div>
+                        <div style={{fontSize:10,fontFamily:'DM Mono',color:C.beata,textAlign:'center'}}>Beata</div>
+                        <div style={{fontSize:10,fontFamily:'DM Mono',color:C.kamil,textAlign:'center'}}>Kamil</div>
                       </div>
-                    );
-                  })}
-                </div>
+                      {scriptItems.map(item=>{
+                        const bp=beata.length>0?Math.round(beata.filter(c=>c[item.key]).length/beata.length*100):0;
+                        const kp=kamil.length>0?Math.round(kamil.filter(c=>c[item.key]).length/kamil.length*100):0;
+                        return(
+                          <div key={item.key} style={{display:'grid',gridTemplateColumns:'28px 1fr 100px 100px',borderBottom:`1px solid ${C.border}`,alignItems:'center'}}>
+                            <div style={{textAlign:'center',padding:'12px 8px',fontSize:13}}>{bp>=70&&kp>=70?'✅':bp<40||kp<40?'🔴':'⚠️'}</div>
+                            <div style={{padding:'12px 14px',fontSize:12,color:C.text2}}>{item.label}</div>
+                            <div style={{padding:'10px 8px',textAlign:'center'}}>
+                              <div style={{fontSize:13,color:bp>=70?C.green:C.red}}>{bp>=70?'✓':'✗'}</div>
+                              <div style={{fontSize:10,fontFamily:'DM Mono',color:C.beata}}>{bp}%</div>
+                            </div>
+                            <div style={{padding:'10px 8px',textAlign:'center'}}>
+                              <div style={{fontSize:13,color:kp>=70?C.green:C.red}}>{kp>=70?'✓':'✗'}</div>
+                              <div style={{fontSize:10,fontFamily:'DM Mono',color:C.kamil}}>{kp}%</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
 
-                <Sec icon="🏗️" title="Znajomość produktu NOWIMA"/>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:24}}>
-                  {productKnowledge.map(cat=>(
-                    <div key={cat.category} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:'18px 20px'}}>
-                      <div style={{fontFamily:'Outfit',fontWeight:700,fontSize:13,marginBottom:14}}>{cat.category}</div>
-                      {cat.items.map(item=>(
-                        <div key={item.label} style={{marginBottom:12}}>
-                          <div style={{fontSize:12,color:C.text2,marginBottom:5}}>{item.label}</div>
-                          {[{name:'Beata',val:item.beata,color:C.beata},{name:'Kamil',val:item.kamil,color:C.kamil}].map(m=>(
-                            <div key={m.name} style={{display:'flex',alignItems:'center',gap:8,marginBottom:3}}>
-                              <div style={{fontSize:10,fontFamily:'DM Mono',fontWeight:500,width:38,color:m.color}}>{m.name}</div>
-                              <div style={{flex:1,background:C.bg,borderRadius:4,height:7,overflow:'hidden'}}>
-                                <div style={{width:`${m.val*10}%`,height:'100%',background:m.color,borderRadius:4}}/>
-                              </div>
-                              <div style={{fontSize:11,fontFamily:'DM Mono',width:32,textAlign:'right',color:m.color}}>{m.val}/10</div>
+                    <Sec icon="🏗️" title="Znajomość produktu NOWIMA"/>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:24}}>
+                      {productKnowledge.map(cat=>(
+                        <div key={cat.category} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:'18px 20px'}}>
+                          <div style={{fontFamily:'Outfit',fontWeight:700,fontSize:13,marginBottom:14}}>{cat.category}</div>
+                          {cat.items.map(item=>(
+                            <div key={item.label} style={{marginBottom:12}}>
+                              <div style={{fontSize:12,color:C.text2,marginBottom:5}}>{item.label}</div>
+                              {[{name:'Beata',val:item.beata,color:C.beata},{name:'Kamil',val:item.kamil,color:C.kamil}].map(m=>(
+                                <div key={m.name} style={{display:'flex',alignItems:'center',gap:8,marginBottom:3}}>
+                                  <div style={{fontSize:10,fontFamily:'DM Mono',fontWeight:500,width:38,color:m.color}}>{m.name}</div>
+                                  <div style={{flex:1,background:C.bg,borderRadius:4,height:7,overflow:'hidden'}}>
+                                    <div style={{width:`${m.val*10}%`,height:'100%',background:m.color,borderRadius:4}}/>
+                                  </div>
+                                  <div style={{fontSize:11,fontFamily:'DM Mono',width:32,textAlign:'right',color:m.color}}>{m.val}/10</div>
+                                </div>
+                              ))}
                             </div>
                           ))}
                         </div>
                       ))}
                     </div>
-                  ))}
-                </div>
+                  </>
+                )}
 
+                {/* Top clients */}
                 {clientCounts.length>0&&(
                   <>
                     <Sec icon="🏆" title="Top klienci" badge={clientCounts.length}/>
@@ -363,7 +468,7 @@ export default function App() {
                       <table style={{width:'100%',borderCollapse:'collapse'}}>
                         <thead>
                           <tr style={{background:C.surface2,borderBottom:`1px solid ${C.border}`}}>
-                            {['#','Klient','Menedżer','Rozmów','Hot leady','Ostatni kontakt'].map(h=>(
+                            {['#','Klient','Menedżer','Kontaktów','Hot','Ostatni kontakt'].map(h=>(
                               <th key={h} style={{padding:'9px 14px',textAlign:'left',fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',letterSpacing:'0.07em',color:C.text3}}>{h}</th>
                             ))}
                           </tr>
@@ -393,15 +498,16 @@ export default function App() {
                       {beata.length>0&&`Beata: ${Math.round(beata.filter(c=>c.lpr).length/beata.length*100)}% konwersji do ŁPR. `}
                       {kamil.length>0&&`Kamil: ${Math.round(kamil.filter(c=>c.lpr).length/kamil.length*100)}% konwersji do ŁPR. `}
                       {lpr.length>0&&`Łącznie ${lpr.length} kontaktów z ŁPR.`}
+                      {videoMeetings.length>0&&` ${videoMeetings.length} spotkań wideo z klientami.`}
                       {calls.length===0&&'Brak danych za wybrany okres.'}
                     </div>
                   </div>
                   <div style={{background:C.surface,border:`1px solid ${C.border}`,borderLeft:`4px solid ${C.red}`,borderRadius:12,padding:'18px 20px'}}>
                     <div style={{fontFamily:'Outfit',fontWeight:700,fontSize:13,marginBottom:10}}>🔴 Co wymaga poprawy</div>
                     <div style={{fontSize:12,color:C.text2,lineHeight:1.7}}>
-                      {meetings.length===0&&calls.length>0&&'Zero spotkań online — krytyczna luka. '}
-                      {lprConv<20&&calls.length>0&&`Niska konwersja ŁPR (${lprConv}%). `}
-                      {calls.filter(c=>c.checklist_spin).length/Math.max(lpr.length,1)<0.5&&calls.length>0&&'Za mało pytań SPIN przy ŁPR.'}
+                      {meetingsZoom.length===0&&phoneCalls.length>0&&'Zero spotkań online z rozmów — krytyczna luka. '}
+                      {lprConv<20&&phoneCalls.length>0&&`Niska konwersja ŁPR (${lprConv}%). `}
+                      {bots.length>0&&phoneCalls.length>0&&`${Math.round(bots.length/phoneCalls.length*100)}% rozmów to boty/automaty. `}
                       {calls.length===0&&'Brak danych za wybrany okres.'}
                     </div>
                   </div>
@@ -411,16 +517,18 @@ export default function App() {
 
             {view==='calls'&&(
               <>
-                <Sec icon="📞" title="Wszystkie rozmowy" badge={filtered.length}/>
+                <Sec icon="📞" title="Wszystkie kontakty" badge={filtered.length}/>
                 <div style={{marginBottom:14}}>
                   <input type="text" placeholder="🔍 Szukaj po kliencie, wyniku, menedżerze..." value={search} onChange={e=>setSearch(e.target.value)}
                     style={{width:'100%',padding:'10px 16px',borderRadius:10,border:`1px solid ${C.border}`,background:C.surface,fontSize:13,fontFamily:'DM Sans',outline:'none',boxSizing:'border-box'}}/>
                 </div>
                 <div style={{display:'flex',flexDirection:'column',gap:8}}>
                   {filtered.map(call=>(
-                    <CallDetail key={call.id} call={call} isOpen={activeCall===call.id} onToggle={()=>setActiveCall(activeCall===call.id?null:call.id)}/>
+                    call.sip==='meeting'
+                      ? <MeetingCard key={call.id} meeting={call} isOpen={activeCall===call.id} onToggle={()=>setActiveCall(activeCall===call.id?null:call.id)}/>
+                      : <CallDetail key={call.id} call={call} isOpen={activeCall===call.id} onToggle={()=>setActiveCall(activeCall===call.id?null:call.id)}/>
                   ))}
-                  {filtered.length===0&&<div style={{textAlign:'center',padding:40,color:C.text3,fontFamily:'DM Mono'}}>Brak rozmów spełniających kryteria</div>}
+                  {filtered.length===0&&<div style={{textAlign:'center',padding:40,color:C.text3,fontFamily:'DM Mono'}}>Brak kontaktów spełniających kryteria</div>}
                 </div>
               </>
             )}
@@ -440,18 +548,19 @@ export default function App() {
                           <Area type="monotone" dataKey="total" stroke={C.nowima} fill={C.nowima} fillOpacity={0.1} name="Rozmowy"/>
                           <Area type="monotone" dataKey="lpr" stroke={C.green} fill={C.green} fillOpacity={0.1} name="ŁPR"/>
                           <Area type="monotone" dataKey="hot" stroke={C.red} fill={C.red} fillOpacity={0.1} name="Hot leady"/>
+                          <Area type="monotone" dataKey="bots" stroke={C.amber} fill={C.amber} fillOpacity={0.1} name="Boty"/>
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
                     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
                       <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:'18px 20px'}}>
-                        <div style={{fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',color:C.text3,marginBottom:14}}>Spotkania online według dni</div>
+                        <div style={{fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',color:C.text3,marginBottom:14}}>Boty według dni</div>
                         <ResponsiveContainer width="100%" height={180}>
                           <BarChart data={trendData}>
                             <XAxis dataKey="day" tick={{fontSize:10,fontFamily:'DM Mono',fill:C.text3}}/>
                             <YAxis tick={{fontSize:10,fontFamily:'DM Mono',fill:C.text3}}/>
                             <Tooltip contentStyle={{fontFamily:'DM Mono',fontSize:11}}/>
-                            <Bar dataKey="meetings" fill={C.green} radius={[4,4,0,0]} name="Spotkania"/>
+                            <Bar dataKey="bots" fill={C.amber} radius={[4,4,0,0]} name="Boty"/>
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
@@ -459,19 +568,22 @@ export default function App() {
                         <div style={{fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',color:C.text3,marginBottom:14}}>Porównanie z poprzednim okresem</div>
                         <div style={{display:'flex',flexDirection:'column',gap:10,marginTop:8}}>
                           {[
-                            {label:'Rozmowy',curr:calls.length,prev:prevCalls.length},
+                            {label:'Rozmowy telefoniczne',curr:phoneCalls.length,prev:prevData.filter(c=>c.sip!=='meeting').length},
                             {label:'Kontakty ŁPR',curr:lpr.length,prev:prevLpr},
                             {label:'Gorące leady',curr:hot.length,prev:prevHot},
-                            {label:'Spotkania online',curr:meetings.length,prev:prevCalls.filter(c=>c.checklist_zoom).length},
+                            {label:'Boty/automaty',curr:bots.length,prev:prevData.filter(c=>c.wynik==='bot/automat'||c.wynik==='bot').length},
+                            {label:'Spotkania wideo',curr:videoMeetings.length,prev:prevData.filter(c=>c.sip==='meeting').length},
                           ].map(row=>{
                             const d=row.curr-row.prev;
                             const pct=row.prev>0?Math.round(Math.abs(d)/row.prev*100):null;
+                            const isNegativeGood=row.label==='Boty/automaty';
+                            const isGood=isNegativeGood?d<=0:d>=0;
                             return(
                               <div key={row.label} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderBottom:`1px solid ${C.border}`}}>
                                 <span style={{fontSize:12,color:C.text2}}>{row.label}</span>
                                 <div style={{display:'flex',gap:8,alignItems:'center'}}>
                                   <span style={{fontFamily:'DM Mono',fontSize:13,fontWeight:500}}>{row.curr}</span>
-                                  {pct!==null&&<span style={{fontSize:11,fontFamily:'DM Mono',color:d>=0?C.green:C.red,background:d>=0?C.greenLight:C.redLight,padding:'2px 6px',borderRadius:4}}>{d>=0?'↑':'↓'}{pct}%</span>}
+                                  {pct!==null&&<span style={{fontSize:11,fontFamily:'DM Mono',color:isGood?C.green:C.red,background:isGood?C.greenLight:C.redLight,padding:'2px 6px',borderRadius:4}}>{d>=0?'↑':'↓'}{pct}%</span>}
                                 </div>
                               </div>
                             );
@@ -482,8 +594,7 @@ export default function App() {
                   </>
                 ):(
                   <div style={{textAlign:'center',padding:60,color:C.text3,fontFamily:'DM Mono',background:C.surface,borderRadius:12,border:`1px solid ${C.border}`}}>
-                    📊 Trendy pojawią się gdy zbiorą się dane z kilku dni.<br/>
-                    <span style={{fontSize:12,marginTop:8,display:'block'}}>Aktualnie: {trendData.length} {trendData.length===1?'dzień':'dni'} danych</span>
+                    📊 Trendy pojawią się gdy zbiorą się dane z kilku dni.
                   </div>
                 )}
               </>
@@ -499,11 +610,7 @@ export default function App() {
 }
 
 function Alert({color,border,bg,children}){
-  return(
-    <div style={{background:bg,border:`1px solid ${border}`,borderRadius:10,padding:'12px 18px',fontSize:12,color,marginBottom:12,display:'flex',gap:10}}>
-      {children}
-    </div>
-  );
+  return(<div style={{background:bg,border:`1px solid ${border}`,borderRadius:10,padding:'12px 18px',fontSize:12,color,marginBottom:12,display:'flex',gap:10}}>{children}</div>);
 }
 
 function Sec({icon,title,badge}){
@@ -572,24 +679,70 @@ function MgrCard({manager,sip,calls,color}){
 
 function LeadCard({call,onOpen}){
   const isHot=call.wynik==='gorący lead';
+  const isMeeting=call.sip==='meeting';
   return(
     <div style={{background:'#FFF',border:'1px solid #E8E4DC',borderRadius:12,overflow:'hidden',display:'grid',gridTemplateColumns:'4px 1fr',cursor:'pointer'}} onClick={onOpen}>
       <div style={{background:isHot?'#C0392B':'#C07A1A'}}/>
       <div style={{padding:'14px 18px'}}>
         <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8,flexWrap:'wrap'}}>
           <span style={{fontFamily:'Outfit',fontWeight:700,fontSize:14}}>{isHot?'🔥':'⚠️'} {call.klient||call.manager}</span>
-          <span style={{fontSize:10,padding:'2px 8px',borderRadius:20,fontFamily:'DM Mono',background:call.sip==='123'?'#F4ECED':'#F7FAE6',color:call.sip==='123'?'#5A171E':'#8A9C00',border:`1px solid ${call.sip==='123'?'rgba(90,23,30,0.15)':'rgba(138,156,0,0.2)'}`}}>
-            {call.sip==='123'?'Beata':'Kamil'}
+          <span style={{fontSize:10,padding:'2px 8px',borderRadius:20,fontFamily:'DM Mono',background:isMeeting?'#F0F4FF':call.sip==='123'?'#F4ECED':'#F7FAE6',color:isMeeting?'#3B5BDB':call.sip==='123'?'#5A171E':'#8A9C00',border:'1px solid rgba(0,0,0,0.08)'}}>
+            {isMeeting?'🎥 Spotkanie':call.sip==='123'?'Beata':'Kamil'}
           </span>
-          <span style={{fontSize:10,color:'#A09890',fontFamily:'DM Mono'}}>{call.call_time?format(parseISO(call.call_time),'dd.MM HH:mm'):''} · {call.duration}s</span>
-          <span style={{fontSize:10,color:isHot?'#C0392B':'#C07A1A',marginLeft:'auto',fontFamily:'DM Mono'}}>→ Otwórz szczegóły</span>
+          <span style={{fontSize:10,color:'#A09890',fontFamily:'DM Mono'}}>{call.call_time?format(parseISO(call.call_time),'dd.MM HH:mm'):''}</span>
+          <span style={{fontSize:10,color:isHot?'#C0392B':'#C07A1A',marginLeft:'auto',fontFamily:'DM Mono'}}>→ Otwórz</span>
         </div>
-        <div style={{display:'flex',flexDirection:'column',gap:4}}>
-          {call.co_powiedzial&&<div style={{fontSize:12,color:'#6B6560'}}><strong>Klient:</strong> {call.co_powiedzial}</div>}
-          {call.co_przeoczono&&<div style={{fontSize:12,color:'#6B6560'}}><strong>Przeoczono:</strong> {call.co_przeoczono}</div>}
-          {call.akcja&&<div style={{marginTop:6,padding:'7px 12px',borderRadius:8,background:isHot?'#FEF2F0':'#FEF8EC',color:isHot?'#C0392B':'#C07A1A',fontSize:12,fontWeight:500,display:'inline-flex',border:`1px solid ${isHot?'#F5C0BB':'#F5D89A'}`}}>→ {call.akcja}</div>}
-        </div>
+        {call.co_powiedzial&&<div style={{fontSize:12,color:'#6B6560',marginBottom:4}}><strong>Klient:</strong> {call.co_powiedzial}</div>}
+        {call.akcja&&<div style={{marginTop:6,padding:'7px 12px',borderRadius:8,background:isHot?'#FEF2F0':'#FEF8EC',color:isHot?'#C0392B':'#C07A1A',fontSize:12,fontWeight:500,display:'inline-flex',border:`1px solid ${isHot?'#F5C0BB':'#F5D89A'}`}}>→ {call.akcja}</div>}
       </div>
+    </div>
+  );
+}
+
+function MeetingCard({meeting,isOpen,onToggle}){
+  const stars='★'.repeat(meeting.ocena||0)+'☆'.repeat(5-(meeting.ocena||0));
+  const wc=meeting.wynik==='sukces'?'#1A7A4A':meeting.wynik==='częściowy sukces'?'#C07A1A':'#A09890';
+  const wb=meeting.wynik==='sukces'?'#EDF7F2':meeting.wynik==='częściowy sukces'?'#FEF8EC':'#F9F8F5';
+  const mgr=meeting.manager==='Beata Janoszka'?'Beata':'Kamil';
+  const mgrColor=meeting.manager==='Beata Janoszka'?'#5A171E':'#8A9C00';
+  return(
+    <div style={{background:'#FFF',border:'1px solid #E8E4DC',borderRadius:12,overflow:'hidden',borderLeft:'3px solid #3B5BDB'}}>
+      <div onClick={onToggle} style={{display:'grid',gridTemplateColumns:'28px 80px 1fr auto auto auto 28px',alignItems:'center',gap:10,padding:'12px 16px',cursor:'pointer',background:isOpen?'#F9F8F5':'#FFF'}}>
+        <div style={{fontSize:14}}>🎥</div>
+        <div style={{fontSize:11,fontWeight:500,color:mgrColor}}>{mgr}</div>
+        <div style={{fontSize:13,fontWeight:500}}>{meeting.klient||'—'}</div>
+        <div style={{fontFamily:'DM Mono',fontSize:11,color:'#A09890'}}>{meeting.call_time?format(parseISO(meeting.call_time),'dd.MM HH:mm'):''}</div>
+        <div style={{color:'#C07A1A',fontSize:12}}>{stars}</div>
+        <div><span style={{fontSize:10,padding:'2px 8px',borderRadius:20,fontFamily:'DM Mono',background:wb,color:wc,border:`1px solid ${wc}30`}}>{meeting.wynik||'—'}</span></div>
+        <div style={{color:'#A09890',fontSize:12,textAlign:'center',transition:'transform 0.2s',transform:isOpen?'rotate(180deg)':'none'}}>▼</div>
+      </div>
+      {isOpen&&(
+        <div style={{borderTop:'1px solid #E8E4DC',padding:'16px 20px',background:'#F9F8F5'}}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:14}}>
+            <div>
+              {meeting.co_powiedzial&&<div style={{fontSize:12,color:'#6B6560',lineHeight:1.6,marginBottom:8}}><strong>Temat:</strong> {meeting.co_powiedzial}</div>}
+              {meeting.obiekcja&&<div style={{fontSize:12,color:'#6B6560',lineHeight:1.6,marginBottom:8}}><strong>Obiekcje:</strong> {meeting.obiekcja}</div>}
+              {meeting.co_przeoczono&&<div style={{fontSize:12,color:'#6B6560',lineHeight:1.6}}><strong>Do poprawy:</strong> {meeting.co_przeoczono}</div>}
+            </div>
+            <div>
+              {meeting.akcja&&(
+                <div style={{marginBottom:12}}>
+                  <div style={{fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',color:'#A09890',marginBottom:8}}>Następny krok</div>
+                  <div style={{fontSize:12,color:'#1A7A4A',lineHeight:1.6,paddingLeft:10,borderLeft:'2px solid #1A7A4A'}}>{meeting.akcja}</div>
+                </div>
+              )}
+            </div>
+          </div>
+          {meeting.transcript&&(
+            <div>
+              <div style={{fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',color:'#A09890',marginBottom:8}}>Fragment transkryptu</div>
+              <div style={{fontSize:12,color:'#6B6560',lineHeight:1.7,background:'#FFF',border:'1px solid #E8E4DC',borderRadius:8,padding:'12px 16px',maxHeight:200,overflowY:'auto',fontFamily:'DM Mono',whiteSpace:'pre-wrap'}}>
+                {meeting.transcript}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -629,7 +782,7 @@ function CallDetail({call,isOpen,onToggle}){
                   </span>
                 ))}
               </div>
-              {call.co_powiedzial&&<div style={{fontSize:12,color:'#6B6560',lineHeight:1.6,marginBottom:6}}><strong>Klient powiedział:</strong> {call.co_powiedzial}</div>}
+              {call.co_powiedzial&&<div style={{fontSize:12,color:'#6B6560',lineHeight:1.6,marginBottom:6}}><strong>Klient:</strong> {call.co_powiedzial}</div>}
               {call.co_przeoczono&&<div style={{fontSize:12,color:'#6B6560',lineHeight:1.6}}><strong>Przeoczono:</strong> {call.co_przeoczono}</div>}
             </div>
             <div>

@@ -174,18 +174,31 @@ export default function App() {
     {key:'checklist_nastepny_krok',label:'Następny krok'},
   ];
 
-  const productKnowledge=[
+  const avgKnowledge=(calls, field)=>{
+    const vals=calls.filter(c=>c[field]!=null&&c[field]>0).map(c=>c[field]);
+    if(vals.length===0)return null;
+    return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*10)/10;
+  };
+
+  const productKnowledge=useMemo(()=>[
     {category:'Elektrycy i elektromonterzy',items:[
-      {label:'Typy specjalistów (miesz./przem.)',beata:7,kamil:5},
-      {label:'Certyfikaty VCA/SEP',beata:6,kamil:4},
-      {label:'Elektryk vs elektromonter',beata:5,kamil:3},
+      {label:'Wiedza o elektryk./elektromont.',field:'znanie_elektryka'},
+      {label:'Certyfikaty VCA/SEP',field:'znanie_certyfikaty'},
     ]},
     {category:'Spawacze i monterzy',items:[
-      {label:'Metody MIG/MAG/TIG/MMA',beata:6,kamil:5},
-      {label:'Certyfikaty ISO 9606-1, VCA',beata:7,kamil:6},
-      {label:'Monterzy: rysunki techniczne',beata:5,kamil:4},
+      {label:'Metody spawania (MIG/MAG/TIG)',field:'znanie_spawanie'},
+      {label:'Monterzy / rysunki techniczne',field:'znanie_monterzy'},
     ]},
-  ];
+  ].map(cat=>({
+    ...cat,
+    items:cat.items.map(item=>({
+      ...item,
+      beata:avgKnowledge(beata,item.field)||0,
+      kamil:avgKnowledge(kamil,item.field)||0,
+      beataCount:beata.filter(c=>c[item.field]!=null&&c[item.field]>0).length,
+      kamilCount:kamil.filter(c=>c[item.field]!=null&&c[item.field]>0).length,
+    }))
+  })),[beata,kamil]);
 
   const exportCSV=()=>{
     const h=['Data','Menedżer','Klient','Czas','LPR','Wynik','Ocena','Akcja'];
@@ -480,13 +493,14 @@ export default function App() {
                           {cat.items.map(item=>(
                             <div key={item.label} style={{marginBottom:12}}>
                               <div style={{fontSize:12,color:C.text2,marginBottom:5}}>{item.label}</div>
-                              {[{name:'Beata',val:item.beata,color:C.beata},{name:'Kamil',val:item.kamil,color:C.kamil}].map(m=>(
+                              {[{name:'Beata',val:item.beata,count:item.beataCount,color:C.beata},{name:'Kamil',val:item.kamil,count:item.kamilCount,color:C.kamil}].map(m=>(
                                 <div key={m.name} style={{display:'flex',alignItems:'center',gap:8,marginBottom:3}}>
                                   <div style={{fontSize:10,fontFamily:'DM Mono',fontWeight:500,width:38,color:m.color}}>{m.name}</div>
                                   <div style={{flex:1,background:C.bg,borderRadius:4,height:7,overflow:'hidden'}}>
-                                    <div style={{width:`${m.val*10}%`,height:'100%',background:m.color,borderRadius:4}}/>
+                                    <div style={{width:`${m.val*10}%`,height:'100%',background:m.val>0?m.color:'#E8E4DC',borderRadius:4}}/>
                                   </div>
-                                  <div style={{fontSize:11,fontFamily:'DM Mono',width:32,textAlign:'right',color:m.color}}>{m.val}/10</div>
+                                  <div style={{fontSize:11,fontFamily:'DM Mono',width:48,textAlign:'right',color:m.val>0?m.color:C.text3}}>{m.val>0?`${m.val}/10`:'—'}</div>
+                                  <div style={{fontSize:9,color:C.text3,fontFamily:'DM Mono'}}>{m.count>0?`(${m.count})`:'brak'}</div>
                                 </div>
                               ))}
                             </div>

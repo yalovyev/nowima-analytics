@@ -260,12 +260,12 @@ export default function App() {
                     <div>
                       <div style={{fontSize:11,color:C.text3,marginBottom:4}}>Od:</div>
                       <input type="date" value={customStart} onChange={e=>setCustomStart(e.target.value)}
-                        style={{width:'100%',padding:'8px 10px',borderRadius:6,border:`1px solid ${C.border}`,fontSize:12,fontFamily:'DM Mono',outline:'none',color:C.text,boxSizing:'border-box'}}/>
+                        style={{width:'100%',padding:'8px 10px',borderRadius:6,border:'1px solid #E8E4DC',fontSize:13,outline:'none',boxSizing:'border-box',background:'#FFF',color:'#1A1714',cursor:'pointer'}}/>
                     </div>
                     <div>
                       <div style={{fontSize:11,color:C.text3,marginBottom:4}}>Do:</div>
                       <input type="date" value={customEnd} onChange={e=>setCustomEnd(e.target.value)}
-                        style={{width:'100%',padding:'8px 10px',borderRadius:6,border:`1px solid ${C.border}`,fontSize:12,fontFamily:'DM Mono',outline:'none',color:C.text,boxSizing:'border-box'}}/>
+                        style={{width:'100%',padding:'8px 10px',borderRadius:6,border:'1px solid #E8E4DC',fontSize:13,outline:'none',boxSizing:'border-box',background:'#FFF',color:'#1A1714',cursor:'pointer'}}/>
                     </div>
                     <button onClick={()=>setShowCalendar(false)} style={{padding:'8px',borderRadius:6,background:C.nowima,color:'white',border:'none',cursor:'pointer',fontSize:12,fontFamily:'DM Mono'}}>
                       ✓ Zastosuj

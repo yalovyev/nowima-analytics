@@ -32,6 +32,7 @@ export default function App() {
   const [view,setView]=useState('dashboard');
   const [search,setSearch]=useState('');
   const [notif,setNotif]=useState(null);
+  const [showBurger,setShowBurger]=useState(false);
 
   const getRange=useCallback((offset=0)=>{
     const now=new Date();
@@ -214,6 +215,14 @@ export default function App() {
   });
 
   const periodLabel={day:'Dziś',yesterday:'Wczoraj',week:'Tydzień',month:'Miesiąc',all:'Wszystko',custom:'📅 Własny'};
+  const sourceLabel={all:'📊 Wszystko',calls:'📞 Rozmowy',meetings:'🎥 Spotkania'};
+  
+  const getActivePeriodLabel=()=>{
+    if(period==='custom'&&customStart&&customEnd){
+      return `${customStart} — ${customEnd}`;
+    }
+    return periodLabel[period]||'—';
+  };
 
   return(
     <div style={{fontFamily:"'DM Sans',sans-serif",background:C.bg,minHeight:'100vh',color:C.text}}>
@@ -239,11 +248,36 @@ export default function App() {
             ))}
           </div>
 
-          {/* Source filter */}
-          <div style={{display:'flex',gap:4,borderLeft:'1px solid rgba(255,255,255,0.15)',paddingLeft:8}}>
-            {[['all','📊 Wszystko'],['calls','📞 Rozmowy'],['meetings','🎥 Spotkania']].map(([s,l])=>(
-              <button key={s} onClick={()=>setSource(s)} style={btnStyle(source===s)}>{l}</button>
-            ))}
+          {/* Burger menu - source filter */}
+          <div style={{position:'relative'}}>
+            <button onClick={()=>setShowBurger(!showBurger)} style={{
+              display:'flex',flexDirection:'column',gap:4,padding:'8px 10px',borderRadius:8,
+              border:'1px solid rgba(255,255,255,0.2)',background:showBurger?'rgba(209,233,37,0.15)':'transparent',
+              cursor:'pointer',alignItems:'center'
+            }}>
+              <div style={{width:16,height:2,background:source!=='all'?C.lime:'rgba(255,255,255,0.7)',borderRadius:1}}/>
+              <div style={{width:16,height:2,background:source!=='all'?C.lime:'rgba(255,255,255,0.7)',borderRadius:1}}/>
+              <div style={{width:16,height:2,background:source!=='all'?C.lime:'rgba(255,255,255,0.7)',borderRadius:1}}/>
+            </button>
+            {showBurger&&(
+              <div style={{position:'absolute',top:44,left:0,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,overflow:'hidden',zIndex:9999,boxShadow:'0 8px 24px rgba(0,0,0,0.15)',minWidth:180}}>
+                <div style={{padding:'8px 14px',fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',color:C.text3,letterSpacing:'0.08em',borderBottom:`1px solid ${C.border}`}}>Źródło danych</div>
+                {[['all','📊 Wszystko','Rozmowy + Spotkania'],['calls','📞 Rozmowy','Tylko telefony'],['meetings','🎥 Spotkania','Tylko wideo']].map(([s,icon,desc])=>(
+                  <div key={s} onClick={()=>{setSource(s);setShowBurger(false);}} style={{
+                    padding:'10px 14px',cursor:'pointer',display:'flex',alignItems:'center',gap:10,
+                    background:source===s?'#F4ECED':'transparent',
+                    borderBottom:`1px solid ${C.border}`
+                  }}>
+                    <div style={{fontSize:16}}>{icon.split(' ')[0]}</div>
+                    <div>
+                      <div style={{fontSize:12,fontWeight:500,color:source===s?C.nowima:C.text}}>{icon}</div>
+                      <div style={{fontSize:10,color:C.text3,fontFamily:'DM Mono'}}>{desc}</div>
+                    </div>
+                    {source===s&&<div style={{marginLeft:'auto',color:C.nowima,fontSize:14}}>✓</div>}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Period */}
@@ -284,6 +318,10 @@ export default function App() {
           </div>
 
           <div style={{marginLeft:'auto',display:'flex',gap:8,alignItems:'center'}}>
+            {/* Active period indicator */}
+            <span style={{fontSize:11,padding:'3px 10px',borderRadius:20,border:'1px solid rgba(255,255,255,0.25)',color:'rgba(255,255,255,0.85)',background:'rgba(255,255,255,0.08)',fontFamily:'DM Mono',display:'flex',alignItems:'center',gap:5}}>
+              <span style={{opacity:0.6}}>📅</span> {getActivePeriodLabel()} · {sourceLabel[source]}
+            </span>
             {hot.length>0&&<span style={{fontSize:11,padding:'3px 10px',borderRadius:20,border:`1px solid ${C.lime}`,color:C.lime,background:'rgba(209,233,37,0.1)',fontFamily:'DM Mono'}}>🔥 {hot.length}</span>}
             {bots.length>0&&<span style={{fontSize:11,padding:'3px 10px',borderRadius:20,border:'1px solid #F5D89A',color:'#C07A1A',background:'rgba(192,122,26,0.1)',fontFamily:'DM Mono'}}>🤖 {bots.length}</span>}
             <button onClick={exportCSV} style={{padding:'4px 10px',borderRadius:20,border:'1px solid rgba(255,255,255,0.2)',background:'transparent',color:'rgba(255,255,255,0.6)',fontSize:11,fontFamily:'DM Mono',cursor:'pointer'}}>⬇ CSV</button>

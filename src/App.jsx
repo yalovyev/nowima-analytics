@@ -17,6 +17,8 @@ const C = {
   border:'#E8E4DC',text:'#1A1714',text2:'#6B6560',text3:'#A09890',
 };
 
+const PAGE_SIZE = 100;
+
 export default function App() {
   const [allData,setAllData]=useState([]);
   const [prevData,setPrevData]=useState([]);
@@ -35,14 +37,14 @@ export default function App() {
   const [search,setSearch]=useState('');
   const [portfolioSearch,setPortfolioSearch]=useState('');
   const [portfolioFilter,setPortfolioFilter]=useState('all');
+  const [portfolioMgr,setPortfolioMgr]=useState('all');
+  const [portfolioPage,setPortfolioPage]=useState(0);
   const [notif,setNotif]=useState(null);
   const [showBurger,setShowBurger]=useState(false);
 
   const getRange=useCallback((offset=0)=>{
     const now=new Date();
-    if(period==='custom'&&customStart&&customEnd){
-      return{start:new Date(customStart),end:new Date(customEnd+'T23:59:59')};
-    }
+    if(period==='custom'&&customStart&&customEnd){return{start:new Date(customStart),end:new Date(customEnd+'T23:59:59')};}
     switch(period){
       case 'yesterday':{const d=subDays(now,1+offset);const s=new Date(d);s.setHours(0,0,0,0);const e=new Date(d);e.setHours(23,59,59,999);return{start:s,end:e};}
       case 'day':{const d=subDays(now,offset);const s=new Date(d);s.setHours(0,0,0,0);const e=new Date(d);e.setHours(23,59,59,999);return{start:s,end:e};}
@@ -103,36 +105,42 @@ export default function App() {
     return calls.filter(c=>(c.klient||'').toLowerCase().includes(s)||(c.manager||'').toLowerCase().includes(s)||(c.co_powiedzial||'').toLowerCase().includes(s)||(c.wynik||'').toLowerCase().includes(s));
   },[calls,search]);
 
-  // Portfolio filtered
   const filteredCompanies=useMemo(()=>{
     let list=companies;
+    if(portfolioMgr!=='all')list=list.filter(c=>c.manager===portfolioMgr);
     if(portfolioFilter!=='all')list=list.filter(c=>c.potencjal===portfolioFilter);
     if(portfolioSearch){
       const s=portfolioSearch.toLowerCase();
       list=list.filter(c=>(c.nazwa||'').toLowerCase().includes(s)||(c.stage||'').toLowerCase().includes(s)||(c.manager||'').toLowerCase().includes(s));
     }
     return list;
-  },[companies,portfolioFilter,portfolioSearch]);
+  },[companies,portfolioFilter,portfolioMgr,portfolioSearch]);
 
-  // Portfolio stats
+  // Reset page when filters change
+  useEffect(()=>{setPortfolioPage(0);},[portfolioMgr,portfolioFilter,portfolioSearch]);
+
+  const totalPages=Math.ceil(filteredCompanies.length/PAGE_SIZE);
+  const pagedCompanies=filteredCompanies.slice(portfolioPage*PAGE_SIZE,(portfolioPage+1)*PAGE_SIZE);
+
   const portfolioStats=useMemo(()=>{
+    const base=portfolioMgr==='all'?companies:companies.filter(c=>c.manager===portfolioMgr);
     const now=new Date();
     const weekAgo=new Date(now-7*24*60*60*1000);
     const monthAgo=new Date(now-30*24*60*60*1000);
     return{
-      total:companies.length,
-      wysoki:companies.filter(c=>c.potencjal==='wysoki').length,
-      sredni:companies.filter(c=>c.potencjal==='średni').length,
-      niski:companies.filter(c=>c.potencjal==='niski').length,
-      newWeek:companies.filter(c=>new Date(c.created_at)>weekAgo).length,
-      newMonth:companies.filter(c=>new Date(c.created_at)>monthAgo).length,
+      total:base.length,
+      wysoki:base.filter(c=>c.potencjal==='wysoki').length,
+      sredni:base.filter(c=>c.potencjal==='średni').length,
+      niski:base.filter(c=>c.potencjal==='niski').length,
+      newWeek:base.filter(c=>new Date(c.created_at)>weekAgo).length,
+      newMonth:base.filter(c=>new Date(c.created_at)>monthAgo).length,
     };
-  },[companies]);
+  },[companies,portfolioMgr]);
 
-  // Portfolio growth trend
   const portfolioTrend=useMemo(()=>{
+    const base=portfolioMgr==='all'?companies:companies.filter(c=>c.manager===portfolioMgr);
     const months={};
-    companies.forEach(c=>{
+    base.forEach(c=>{
       if(!c.created_at)return;
       const month=format(parseISO(c.created_at),'MM.yyyy');
       if(!months[month])months[month]={month,total:0,wysoki:0,sredni:0};
@@ -141,7 +149,7 @@ export default function App() {
       if(c.potencjal==='średni')months[month].sredni++;
     });
     return Object.values(months).sort((a,b)=>a.month.localeCompare(b.month)).slice(-12);
-  },[companies]);
+  },[companies,portfolioMgr]);
 
   const phoneCalls=allData.filter(c=>c.sip!=='meeting');
   const videoMeetings=allData.filter(c=>c.sip==='meeting');
@@ -202,14 +210,8 @@ export default function App() {
   };
 
   const productKnowledge=useMemo(()=>[
-    {category:'Elektrycy i elektromonterzy',items:[
-      {label:'Wiedza o elektryk./elektromont.',field:'znanie_elektryka'},
-      {label:'Certyfikaty VCA/SEP',field:'znanie_certyfikaty'},
-    ]},
-    {category:'Spawacze i monterzy',items:[
-      {label:'Metody spawania (MIG/MAG/TIG)',field:'znanie_spawanie'},
-      {label:'Monterzy / rysunki techniczne',field:'znanie_monterzy'},
-    ]},
+    {category:'Elektrycy i elektromonterzy',items:[{label:'Wiedza o elektryk./elektromont.',field:'znanie_elektryka'},{label:'Certyfikaty VCA/SEP',field:'znanie_certyfikaty'}]},
+    {category:'Spawacze i monterzy',items:[{label:'Metody spawania (MIG/MAG/TIG)',field:'znanie_spawanie'},{label:'Monterzy / rysunki techniczne',field:'znanie_monterzy'}]},
   ].map(cat=>({...cat,items:cat.items.map(item=>({...item,beata:avgKnowledge(beata,item.field)||0,kamil:avgKnowledge(kamil,item.field)||0,beataCount:beata.filter(c=>c[item.field]!=null&&c[item.field]>0).length,kamilCount:kamil.filter(c=>c[item.field]!=null&&c[item.field]>0).length}))})),[beata,kamil]);
 
   const exportCSV=()=>{
@@ -229,21 +231,20 @@ export default function App() {
   };
 
   const delta=(curr,prev)=>{if(prev===0)return null;const d=curr-prev;return{value:Math.abs(d),up:d>=0};};
-
   const btnStyle=(active)=>({padding:'4px 10px',borderRadius:20,border:'1px solid',cursor:'pointer',fontSize:11,fontFamily:'DM Mono',borderColor:active?C.lime:'rgba(255,255,255,0.2)',background:active?'rgba(209,233,37,0.15)':'transparent',color:active?C.lime:'rgba(255,255,255,0.65)'});
-
   const periodLabel={day:'Dziś',yesterday:'Wczoraj',week:'Tydzień',month:'Miesiąc',all:'Wszystko',custom:'📅 Własny'};
   const sourceLabel={all:'📊 Wszystko',calls:'📞 Rozmowy',meetings:'🎥 Spotkania'};
   const getActivePeriodLabel=()=>{if(period==='custom'&&customStart&&customEnd)return`${customStart} — ${customEnd}`;return periodLabel[period]||'—';};
-
   const potencjalColor={wysoki:C.green,średni:C.amber,niski:C.text3};
   const potencjalBg={wysoki:C.greenLight,średni:C.amberLight,niski:C.surface2};
   const stageColor={'Contract':C.green,'Finalization':C.green,'Offer':C.amber,'Demand':'#3B5BDB','Rezerwa na przyszłość':C.text3};
+  const mgrColor={'Beata Janoszka':C.beata,'Kamil Wiśniewski':C.kamil,'Monika Żukiewicz':'#7B5EA7'};
+
+  const pbtn=(active)=>({padding:'8px 14px',borderRadius:10,border:`1px solid ${active?C.nowima:C.border}`,background:active?'#F4ECED':C.surface,color:active?C.nowima:C.text2,fontSize:12,cursor:'pointer',fontFamily:'DM Mono'});
 
   return(
     <div style={{fontFamily:"'DM Sans',sans-serif",background:C.bg,minHeight:'100vh',color:C.text}}>
       <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
-
       {notif&&<div style={{position:'fixed',top:70,right:20,zIndex:1000,background:C.nowima,color:'white',padding:'12px 20px',borderRadius:10,boxShadow:'0 4px 20px rgba(90,23,30,0.4)',fontSize:13,fontFamily:'DM Mono',maxWidth:360,borderLeft:`4px solid ${C.lime}`}}>{notif}</div>}
 
       <header style={{background:C.nowima,position:'sticky',top:0,zIndex:100,boxShadow:'0 2px 12px rgba(90,23,30,0.3)',borderBottom:'2px solid rgba(209,233,37,0.3)'}}>
@@ -252,13 +253,11 @@ export default function App() {
             <div style={{background:'rgba(209,233,37,0.15)',border:'1px solid rgba(209,233,37,0.3)',borderRadius:6,padding:'4px 10px',fontFamily:'Outfit',fontWeight:700,fontSize:15,color:C.lime,letterSpacing:1}}>NOWIMA</div>
             <span style={{fontSize:11,color:'rgba(255,255,255,0.5)',fontFamily:'DM Mono'}}>Analytics</span>
           </div>
-
           <div style={{display:'flex',gap:4}}>
             {[['dashboard','📊 Dashboard'],['calls','📞 Rozmowy'],['trends','📈 Trendy'],['portfolio','🏢 Portfel']].map(([v,l])=>(
               <button key={v} onClick={()=>setView(v)} style={btnStyle(view===v)}>{l}</button>
             ))}
           </div>
-
           {view!=='portfolio'&&(
             <>
               <div style={{position:'relative'}}>
@@ -280,7 +279,6 @@ export default function App() {
                   </div>
                 )}
               </div>
-
               <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
                 {[['yesterday','Wczoraj'],['day','Dziś'],['week','Tydzień'],['month','Miesiąc'],['all','Wszystko']].map(([p,l])=>(
                   <button key={p} onClick={()=>{setPeriod(p);setShowCalendar(false);}} style={btnStyle(period===p)}>{l}</button>
@@ -299,7 +297,6 @@ export default function App() {
                   )}
                 </div>
               </div>
-
               <div style={{display:'flex',gap:4}}>
                 {[['all','Wszyscy'],['beata','Beata'],['kamil','Kamil']].map(([m,l])=>(
                   <button key={m} onClick={()=>setMgr(m)} style={btnStyle(mgr===m)}>{l}</button>
@@ -307,7 +304,6 @@ export default function App() {
               </div>
             </>
           )}
-
           <div style={{marginLeft:'auto',display:'flex',gap:8,alignItems:'center'}}>
             {view!=='portfolio'&&<span style={{fontSize:11,padding:'3px 10px',borderRadius:20,border:'1px solid rgba(255,255,255,0.25)',color:'rgba(255,255,255,0.85)',background:'rgba(255,255,255,0.08)',fontFamily:'DM Mono'}}><span style={{opacity:0.6}}>📅</span> {getActivePeriodLabel()} · {sourceLabel[source]}</span>}
             {view==='portfolio'&&<span style={{fontSize:11,padding:'3px 10px',borderRadius:20,border:`1px solid ${C.lime}`,color:C.lime,background:'rgba(209,233,37,0.1)',fontFamily:'DM Mono'}}>🏢 {portfolioStats.total} firm</span>}
@@ -324,11 +320,19 @@ export default function App() {
           <div style={{textAlign:'center',padding:80,color:C.text3,fontFamily:'DM Mono'}}>⏳ Ładowanie danych...</div>
         ):(
           <>
-            {/* ── PORTFOLIO VIEW ── */}
             {view==='portfolio'&&(
               <>
-                {/* KPI */}
-                <Sec icon="🏢" title="Portfel firm NOWIMA — firmy które nas znają"/>
+                {/* Manager filter tabs */}
+                <div style={{display:'flex',gap:8,marginBottom:20,flexWrap:'wrap',alignItems:'center'}}>
+                  {[['all','👥 Wszyscy',companies.length],['Beata Janoszka','Beata',companies.filter(c=>c.manager==='Beata Janoszka').length],['Kamil Wiśniewski','Kamil',companies.filter(c=>c.manager==='Kamil Wiśniewski').length],['Monika Żukiewicz','Monika',companies.filter(c=>c.manager==='Monika Żukiewicz').length]].map(([m,l,cnt])=>(
+                    <button key={m} onClick={()=>setPortfolioMgr(m)} style={{...pbtn(portfolioMgr===m),display:'flex',alignItems:'center',gap:6}}>
+                      {l}
+                      <span style={{fontSize:10,padding:'1px 6px',borderRadius:10,background:portfolioMgr===m?C.nowima+'22':'#E8E4DC',color:portfolioMgr===m?C.nowima:C.text3,fontFamily:'DM Mono'}}>{cnt}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <Sec icon="🏢" title={`Portfel firm — ${portfolioMgr==='all'?'wszyscy menedżerowie':portfolioMgr}`}/>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:12,marginBottom:24}}>
                   <KpiCard label="Wszystkie firmy" value={portfolioStats.total} sub="w portfelu" accent={C.nowima}/>
                   <KpiCard label="Wysoki potencjał" value={portfolioStats.wysoki} sub="Offer + Contract + Finalization" accent={C.green} good/>
@@ -337,23 +341,13 @@ export default function App() {
                   <KpiCard label="Nowe w tym miesiącu" value={portfolioStats.newMonth} sub="dodane w ciągu 30 dni" accent={C.kamil}/>
                 </div>
 
-                {/* Stage breakdown */}
                 <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:10,marginBottom:24}}>
-                  {[
-                    {stage:'Contract',label:'Contract',col:C.green},
-                    {stage:'Finalization',label:'Finalization',col:C.green},
-                    {stage:'Offer',label:'Offer',col:C.amber},
-                    {stage:'Demand',label:'Demand',col:'#3B5BDB'},
-                    {stage:'Rezerwa na przyszłość',label:'Rezerwa',col:C.text3},
-                  ].map(s=>(
-                    <div key={s.stage} style={{background:C.surface,border:`1px solid ${C.border}`,borderTop:`3px solid ${s.col}`,borderRadius:12,padding:'14px 16px'}}>
-                      <div style={{fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',color:C.text3,marginBottom:6}}>{s.label}</div>
-                      <div style={{fontFamily:'Outfit',fontWeight:700,fontSize:26,color:s.col}}>{companies.filter(c=>c.stage===s.stage).length}</div>
-                    </div>
-                  ))}
+                  {[{stage:'Contract',label:'Contract',col:C.green},{stage:'Finalization',label:'Finalization',col:C.green},{stage:'Offer',label:'Offer',col:C.amber},{stage:'Demand',label:'Demand',col:'#3B5BDB'},{stage:'Rezerwa na przyszłość',label:'Rezerwa',col:C.text3}].map(s=>{
+                    const base=portfolioMgr==='all'?companies:companies.filter(c=>c.manager===portfolioMgr);
+                    return(<div key={s.stage} style={{background:C.surface,border:`1px solid ${C.border}`,borderTop:`3px solid ${s.col}`,borderRadius:12,padding:'14px 16px'}}><div style={{fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',color:C.text3,marginBottom:6}}>{s.label}</div><div style={{fontFamily:'Outfit',fontWeight:700,fontSize:26,color:s.col}}>{base.filter(c=>c.stage===s.stage).length}</div></div>);
+                  })}
                 </div>
 
-                {/* Growth chart */}
                 {portfolioTrend.length>1&&(
                   <>
                     <Sec icon="📈" title="Wzrost portfela w czasie"/>
@@ -372,65 +366,69 @@ export default function App() {
                   </>
                 )}
 
-                {/* Filter + search */}
-                <Sec icon="📋" title="Lista firm w portfelu" badge={`${filteredCompanies.length} z ${companies.length}`}/>
+                <Sec icon="📋" title="Lista firm w portfelu" badge={`${filteredCompanies.length} z ${portfolioStats.total}`}/>
                 <div style={{display:'flex',gap:10,marginBottom:14,flexWrap:'wrap'}}>
                   <input type="text" placeholder="🔍 Szukaj firmy..." value={portfolioSearch} onChange={e=>setPortfolioSearch(e.target.value)}
                     style={{flex:1,minWidth:200,padding:'10px 16px',borderRadius:10,border:`1px solid ${C.border}`,background:C.surface,fontSize:13,fontFamily:'DM Sans',outline:'none'}}/>
                   <div style={{display:'flex',gap:6}}>
                     {[['all','Wszystkie'],['wysoki','🟢 Wysoki'],['średni','🟡 Średni'],['niski','⚪ Niski']].map(([f,l])=>(
-                      <button key={f} onClick={()=>setPortfolioFilter(f)} style={{padding:'8px 14px',borderRadius:10,border:`1px solid ${portfolioFilter===f?C.nowima:C.border}`,background:portfolioFilter===f?'#F4ECED':C.surface,color:portfolioFilter===f?C.nowima:C.text2,fontSize:12,cursor:'pointer',fontFamily:'DM Mono'}}>{l}</button>
+                      <button key={f} onClick={()=>setPortfolioFilter(f)} style={pbtn(portfolioFilter===f)}>{l}</button>
                     ))}
                   </div>
                 </div>
 
-                {/* Companies table */}
                 {companiesLoading?(
                   <div style={{textAlign:'center',padding:40,color:C.text3,fontFamily:'DM Mono'}}>⏳ Ładowanie portfela...</div>
                 ):(
-                  <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,overflow:'hidden',marginBottom:24}}>
-                    <table style={{width:'100%',borderCollapse:'collapse'}}>
-                      <thead>
-                        <tr style={{background:C.surface2,borderBottom:`1px solid ${C.border}`}}>
-                          {['Firma','Etap','Potencjał','Menedżer','Ostatnia aktywność',''].map(h=>(
-                            <th key={h} style={{padding:'10px 14px',textAlign:'left',fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',letterSpacing:'0.07em',color:C.text3}}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredCompanies.slice(0,100).map((company,i)=>(
-                          <tr key={company.id} style={{borderBottom:`1px solid ${C.border}`,background:i%2===0?C.surface:C.surface2}}>
-                            <td style={{padding:'10px 14px'}}>
-                              <div style={{fontSize:13,fontWeight:500,color:C.text}}>{company.nazwa}</div>
-                            </td>
-                            <td style={{padding:'10px 14px'}}>
-                              <span style={{fontSize:10,padding:'2px 8px',borderRadius:20,fontFamily:'DM Mono',color:stageColor[company.stage]||C.text3,background:`${stageColor[company.stage]||C.text3}18`,border:`1px solid ${stageColor[company.stage]||C.text3}40`}}>
-                                {company.stage||'—'}
-                              </span>
-                            </td>
-                            <td style={{padding:'10px 14px'}}>
-                              <span style={{fontSize:11,padding:'2px 8px',borderRadius:20,fontFamily:'DM Mono',color:potencjalColor[company.potencjal]||C.text3,background:potencjalBg[company.potencjal]||C.surface2,border:`1px solid ${potencjalColor[company.potencjal]||C.text3}30`}}>
-                                {company.potencjal==='wysoki'?'🟢':company.potencjal==='średni'?'🟡':'⚪'} {company.potencjal||'—'}
-                              </span>
-                            </td>
-                            <td style={{padding:'10px 14px',fontSize:12,color:C.text2}}>{company.manager||'—'}</td>
-                            <td style={{padding:'10px 14px',fontSize:11,color:C.text3,fontFamily:'DM Mono'}}>{company.ostatnia_aktywnosc?format(parseISO(company.ostatnia_aktywnosc),'dd.MM.yyyy'):'—'}</td>
-                            <td style={{padding:'10px 14px'}}>
-                              {company.bitrix_url&&<a href={company.bitrix_url} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:C.nowima,fontFamily:'DM Mono',textDecoration:'none',padding:'3px 8px',border:`1px solid ${C.nowima}30`,borderRadius:6,background:'#F4ECED'}}>→ Bitrix</a>}
-                            </td>
+                  <>
+                    <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,overflow:'hidden',marginBottom:12}}>
+                      <table style={{width:'100%',borderCollapse:'collapse'}}>
+                        <thead>
+                          <tr style={{background:C.surface2,borderBottom:`1px solid ${C.border}`}}>
+                            {['#','Firma','Etap','Potencjał','Menedżer','Ostatnia aktywność',''].map(h=>(
+                              <th key={h} style={{padding:'10px 14px',textAlign:'left',fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',letterSpacing:'0.07em',color:C.text3}}>{h}</th>
+                            ))}
                           </tr>
+                        </thead>
+                        <tbody>
+                          {pagedCompanies.map((company,i)=>(
+                            <tr key={company.id} style={{borderBottom:`1px solid ${C.border}`,background:i%2===0?C.surface:C.surface2}}>
+                              <td style={{padding:'10px 14px',fontSize:11,color:C.text3,fontFamily:'DM Mono'}}>{portfolioPage*PAGE_SIZE+i+1}</td>
+                              <td style={{padding:'10px 14px'}}><div style={{fontSize:13,fontWeight:500,color:C.text}}>{company.nazwa}</div></td>
+                              <td style={{padding:'10px 14px'}}>
+                                <span style={{fontSize:10,padding:'2px 8px',borderRadius:20,fontFamily:'DM Mono',color:stageColor[company.stage]||C.text3,background:`${stageColor[company.stage]||C.text3}18`,border:`1px solid ${stageColor[company.stage]||C.text3}40`}}>{company.stage||'—'}</span>
+                              </td>
+                              <td style={{padding:'10px 14px'}}>
+                                <span style={{fontSize:11,padding:'2px 8px',borderRadius:20,fontFamily:'DM Mono',color:potencjalColor[company.potencjal]||C.text3,background:potencjalBg[company.potencjal]||C.surface2,border:`1px solid ${potencjalColor[company.potencjal]||C.text3}30`}}>
+                                  {company.potencjal==='wysoki'?'🟢':company.potencjal==='średni'?'🟡':'⚪'} {company.potencjal||'—'}
+                                </span>
+                              </td>
+                              <td style={{padding:'10px 14px',fontSize:12,color:mgrColor[company.manager]||C.text2,fontWeight:500}}>{company.manager?.split(' ')[0]||'—'}</td>
+                              <td style={{padding:'10px 14px',fontSize:11,color:C.text3,fontFamily:'DM Mono'}}>{company.ostatnia_aktywnosc?format(parseISO(company.ostatnia_aktywnosc),'dd.MM.yyyy'):'—'}</td>
+                              <td style={{padding:'10px 14px'}}>
+                                {company.bitrix_url&&<a href={company.bitrix_url} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:C.nowima,fontFamily:'DM Mono',textDecoration:'none',padding:'3px 8px',border:`1px solid ${C.nowima}30`,borderRadius:6,background:'#F4ECED'}}>→ Bitrix</a>}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {filteredCompanies.length===0&&<div style={{textAlign:'center',padding:40,color:C.text3,fontFamily:'DM Mono'}}>Brak firm spełniających kryteria</div>}
+                    </div>
+
+                    {/* Pagination */}
+                    {totalPages>1&&(
+                      <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:24}}>
+                        <button onClick={()=>setPortfolioPage(0)} disabled={portfolioPage===0} style={{padding:'6px 12px',borderRadius:8,border:`1px solid ${C.border}`,background:C.surface,cursor:portfolioPage===0?'not-allowed':'pointer',fontSize:12,fontFamily:'DM Mono',color:portfolioPage===0?C.text3:C.text,opacity:portfolioPage===0?0.4:1}}>«</button>
+                        <button onClick={()=>setPortfolioPage(p=>Math.max(0,p-1))} disabled={portfolioPage===0} style={{padding:'6px 12px',borderRadius:8,border:`1px solid ${C.border}`,background:C.surface,cursor:portfolioPage===0?'not-allowed':'pointer',fontSize:12,fontFamily:'DM Mono',color:portfolioPage===0?C.text3:C.text,opacity:portfolioPage===0?0.4:1}}>‹</button>
+                        {Array.from({length:totalPages},(_,i)=>i).filter(i=>Math.abs(i-portfolioPage)<=2).map(i=>(
+                          <button key={i} onClick={()=>setPortfolioPage(i)} style={{padding:'6px 12px',borderRadius:8,border:`1px solid ${i===portfolioPage?C.nowima:C.border}`,background:i===portfolioPage?'#F4ECED':C.surface,cursor:'pointer',fontSize:12,fontFamily:'DM Mono',color:i===portfolioPage?C.nowima:C.text,fontWeight:i===portfolioPage?700:400}}>{i+1}</button>
                         ))}
-                      </tbody>
-                    </table>
-                    {filteredCompanies.length>100&&(
-                      <div style={{padding:'12px 14px',fontSize:12,color:C.text3,fontFamily:'DM Mono',textAlign:'center',borderTop:`1px solid ${C.border}`}}>
-                        Pokazano 100 z {filteredCompanies.length} firm. Użyj wyszukiwarki aby zawęzić wyniki.
+                        <button onClick={()=>setPortfolioPage(p=>Math.min(totalPages-1,p+1))} disabled={portfolioPage===totalPages-1} style={{padding:'6px 12px',borderRadius:8,border:`1px solid ${C.border}`,background:C.surface,cursor:portfolioPage===totalPages-1?'not-allowed':'pointer',fontSize:12,fontFamily:'DM Mono',color:portfolioPage===totalPages-1?C.text3:C.text,opacity:portfolioPage===totalPages-1?0.4:1}}>›</button>
+                        <button onClick={()=>setPortfolioPage(totalPages-1)} disabled={portfolioPage===totalPages-1} style={{padding:'6px 12px',borderRadius:8,border:`1px solid ${C.border}`,background:C.surface,cursor:portfolioPage===totalPages-1?'not-allowed':'pointer',fontSize:12,fontFamily:'DM Mono',color:portfolioPage===totalPages-1?C.text3:C.text,opacity:portfolioPage===totalPages-1?0.4:1}}>»</button>
+                        <span style={{fontSize:11,color:C.text3,fontFamily:'DM Mono',marginLeft:8}}>Strona {portfolioPage+1} z {totalPages} · {filteredCompanies.length} firm</span>
                       </div>
                     )}
-                    {filteredCompanies.length===0&&(
-                      <div style={{textAlign:'center',padding:40,color:C.text3,fontFamily:'DM Mono'}}>Brak firm spełniających kryteria</div>
-                    )}
-                  </div>
+                  </>
                 )}
               </>
             )}
@@ -439,9 +437,7 @@ export default function App() {
               <>
                 {meetingsZoom.length===0&&phoneCalls.length>0&&source!=='meetings'&&(<Alert color={C.red} border={C.redBorder} bg={C.redLight}>🚨 <strong>Krytyczna luka:</strong> Brak umówionych spotkań online. Bez spotkania nie ma oferty.</Alert>)}
                 {bots.length>0&&phoneCalls.length>0&&bots.length/phoneCalls.length>0.2&&(<Alert color={C.amber} border={C.amberBorder} bg={C.amberLight}>🤖 <strong>Boty/automaty:</strong> {bots.length} połączeń ({Math.round(bots.length/phoneCalls.length*100)}%) to automaty.</Alert>)}
-
                 <Sec icon="📊" title={`Kluczowe wskaźniki · ${periodLabel[period]||'Własny'}`}/>
-
                 {source!=='meetings'&&(
                   <>
                     <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:8}}><span style={{fontSize:11,fontFamily:'DM Mono',color:C.text3,textTransform:'uppercase',letterSpacing:'0.08em'}}>📞 Rozmowy telefoniczne</span></div>
@@ -461,7 +457,6 @@ export default function App() {
                     </div>
                   </>
                 )}
-
                 {source!=='calls'&&videoMeetings.length>0&&(
                   <>
                     <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:8}}><span style={{fontSize:11,fontFamily:'DM Mono',color:C.text3,textTransform:'uppercase',letterSpacing:'0.08em'}}>🎥 Spotkania wideo</span></div>
@@ -477,7 +472,6 @@ export default function App() {
                     </div>
                   </>
                 )}
-
                 {source!=='meetings'&&(
                   <>
                     <Sec icon="🔽" title="Lejek sprzedażowy"/>
@@ -494,9 +488,7 @@ export default function App() {
                     </div>
                   </>
                 )}
-
                 {hot.length>0&&(<><Sec icon="🔥" title="Gorące leady i pilne działania" badge={hot.length}/><div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:24}}>{[...hot,...pilne.filter(c=>c.wynik!=='gorący lead')].map(c=>(<LeadCard key={c.id} call={c} onOpen={()=>{setActiveCall(c.id);setView('calls');}}/>))}</div></>)}
-
                 {source!=='meetings'&&(
                   <>
                     <Sec icon="👥" title="Porównanie menedżerów"/>
@@ -523,9 +515,7 @@ export default function App() {
                     </div>
                   </>
                 )}
-
                 {clientCounts.length>0&&(<><Sec icon="🏆" title="Top klienci" badge={clientCounts.length}/><div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,overflow:'hidden',marginBottom:24}}><table style={{width:'100%',borderCollapse:'collapse'}}><thead><tr style={{background:C.surface2,borderBottom:`1px solid ${C.border}`}}>{['#','Klient','Menedżer','Kontaktów','Hot','Ostatni kontakt'].map(h=>(<th key={h} style={{padding:'9px 14px',textAlign:'left',fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',letterSpacing:'0.07em',color:C.text3}}>{h}</th>))}</tr></thead><tbody>{clientCounts.map(([name,data],i)=>(<tr key={name} style={{borderBottom:`1px solid ${C.border}`}}><td style={{padding:'10px 14px',fontSize:12,color:C.text3,fontFamily:'DM Mono'}}>#{i+1}</td><td style={{padding:'10px 14px',fontSize:13,fontWeight:500}}>{name}</td><td style={{padding:'10px 14px',fontSize:11,color:data.manager==='Beata Janoszka'?C.beata:C.kamil}}>{data.manager==='Beata Janoszka'?'Beata':'Kamil'}</td><td style={{padding:'10px 14px',fontSize:13,fontFamily:'DM Mono'}}>{data.count}</td><td style={{padding:'10px 14px'}}>{data.hot>0&&<span style={{background:C.redLight,color:C.red,border:`1px solid ${C.redBorder}`,borderRadius:20,padding:'2px 8px',fontSize:10,fontFamily:'DM Mono'}}>🔥 {data.hot}</span>}</td><td style={{padding:'10px 14px',fontSize:11,color:C.text3,fontFamily:'DM Mono'}}>{data.lastTime?format(parseISO(data.lastTime),'dd.MM HH:mm'):'—'}</td></tr>))}</tbody></table></div></>)}
-
                 <Sec icon="💡" title="Co działa / co wymaga poprawy"/>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:24}}>
                   <div style={{background:C.surface,border:`1px solid ${C.border}`,borderLeft:`4px solid ${C.green}`,borderRadius:12,padding:'18px 20px'}}><div style={{fontFamily:'Outfit',fontWeight:700,fontSize:13,marginBottom:10}}>✅ Co działa dobrze</div><div style={{fontSize:12,color:C.text2,lineHeight:1.7}}>{beata.length>0&&`Beata: ${Math.round(beata.filter(c=>c.lpr).length/beata.length*100)}% konwersji do ŁPR. `}{kamil.length>0&&`Kamil: ${Math.round(kamil.filter(c=>c.lpr).length/kamil.length*100)}% konwersji do ŁPR. `}{lpr.length>0&&`Łącznie ${lpr.length} kontaktów z ŁPR.`}{videoMeetings.length>0&&` ${videoMeetings.length} spotkań wideo.`}{calls.length===0&&'Brak danych za wybrany okres.'}</div></div>

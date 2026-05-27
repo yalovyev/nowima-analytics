@@ -66,7 +66,7 @@ export default function App() {
 
   const fetchCompanies=useCallback(async()=>{
     setCompaniesLoading(true);
-    const{data}=await supabase.from('companies').select('*').order('synced_at',{ascending:false}).limit(5000);
+    const{data}=await supabase.from('companies').select('*').in('manager',['Beata Janoszka','Kamil Wiśniewski','Monika Żukiewicz']).order('synced_at',{ascending:false}).limit(5000);
     if(data)setCompanies(data);
     setCompaniesLoading(false);
   },[]);

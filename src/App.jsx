@@ -569,4 +569,172 @@ function KpiSm({label,value,sub,good,danger}){return(<div style={{background:dan
 function MgrCard({manager,sip,calls,color}){const lpr=calls.filter(c=>c.lpr).length;const hot=calls.filter(c=>c.wynik==='gorący lead').length;const zoom=calls.filter(c=>c.checklist_zoom).length;const over60=calls.filter(c=>c.duration>60).length;const avg=calls.length>0?(calls.reduce((s,c)=>s+(c.ocena||0),0)/calls.length).toFixed(1):'—';return(<div style={{background:'#FFF',border:'1px solid #E8E4DC',borderTop:`3px solid ${color}`,borderRadius:12,overflow:'hidden'}}><div style={{padding:'14px 20px',borderBottom:'1px solid #E8E4DC',display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div style={{fontFamily:'Outfit',fontWeight:700,fontSize:15,color}}>{manager}</div><div style={{fontSize:11,color:'#A09890',fontFamily:'DM Mono',marginTop:2}}>SIP {sip}</div></div><div style={{textAlign:'right'}}><div style={{fontFamily:'Outfit',fontWeight:700,fontSize:22,color}}>{avg}<span style={{fontSize:13,color:'#A09890'}}>/5</span></div><div style={{fontSize:10,color:'#A09890'}}>śr. ocena</div></div></div><div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)'}}>{[{l:'Rozmów',v:calls.length},{l:'Z ŁPR',v:lpr},{l:'Hot leady',v:hot},{l:'Zoom%',v:`${over60>0?Math.round(zoom/over60*100):0}%`}].map((s,i)=>(<div key={i} style={{padding:'12px 16px',borderRight:i<3?'1px solid #E8E4DC':'none'}}><div style={{fontFamily:'Outfit',fontWeight:700,fontSize:20,color}}>{s.v}</div><div style={{fontSize:10,color:'#A09890',marginTop:2,fontFamily:'DM Mono'}}>{s.l}</div></div>))}</div></div>);}
 function LeadCard({call,onOpen}){const isHot=call.wynik==='gorący lead';const isMeeting=call.sip==='meeting';return(<div style={{background:'#FFF',border:'1px solid #E8E4DC',borderRadius:12,overflow:'hidden',display:'grid',gridTemplateColumns:'4px 1fr',cursor:'pointer'}} onClick={onOpen}><div style={{background:isHot?'#C0392B':'#C07A1A'}}/><div style={{padding:'14px 18px'}}><div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8,flexWrap:'wrap'}}><span style={{fontFamily:'Outfit',fontWeight:700,fontSize:14}}>{isHot?'🔥':'⚠️'} {call.klient||call.manager}</span><span style={{fontSize:10,padding:'2px 8px',borderRadius:20,fontFamily:'DM Mono',background:isMeeting?'#F0F4FF':call.sip==='123'?'#F4ECED':'#F7FAE6',color:isMeeting?'#3B5BDB':call.sip==='123'?'#5A171E':'#8A9C00',border:'1px solid rgba(0,0,0,0.08)'}}>{isMeeting?'🎥 Spotkanie':call.sip==='123'?'Beata':'Kamil'}</span><span style={{fontSize:10,color:'#A09890',fontFamily:'DM Mono'}}>{call.call_time?format(parseISO(call.call_time),'dd.MM HH:mm'):''}</span><span style={{fontSize:10,color:isHot?'#C0392B':'#C07A1A',marginLeft:'auto',fontFamily:'DM Mono'}}>→ Otwórz</span></div>{call.co_powiedzial&&<div style={{fontSize:12,color:'#6B6560',marginBottom:4}}><strong>Klient:</strong> {call.co_powiedzial}</div>}{call.akcja&&<div style={{marginTop:6,padding:'7px 12px',borderRadius:8,background:isHot?'#FEF2F0':'#FEF8EC',color:isHot?'#C0392B':'#C07A1A',fontSize:12,fontWeight:500,display:'inline-flex',border:`1px solid ${isHot?'#F5C0BB':'#F5D89A'}`}}>→ {call.akcja}</div>}</div></div>);}
 function MeetingCard({meeting,isOpen,onToggle}){const stars='★'.repeat(meeting.ocena||0)+'☆'.repeat(5-(meeting.ocena||0));const wc=meeting.wynik==='sukces'?'#1A7A4A':meeting.wynik==='częściowy sukces'?'#C07A1A':'#A09890';const wb=meeting.wynik==='sukces'?'#EDF7F2':meeting.wynik==='częściowy sukces'?'#FEF8EC':'#F9F8F5';const mgr=meeting.manager==='Beata Janoszka'?'Beata':'Kamil';const mgrColor=meeting.manager==='Beata Janoszka'?'#5A171E':'#8A9C00';return(<div style={{background:'#FFF',border:'1px solid #E8E4DC',borderRadius:12,overflow:'hidden',borderLeft:'3px solid #3B5BDB'}}><div onClick={onToggle} style={{display:'grid',gridTemplateColumns:'28px 80px 1fr auto auto auto 28px',alignItems:'center',gap:10,padding:'12px 16px',cursor:'pointer',background:isOpen?'#F9F8F5':'#FFF'}}><div style={{fontSize:14}}>🎥</div><div style={{fontSize:11,fontWeight:500,color:mgrColor}}>{mgr}</div><div style={{fontSize:13,fontWeight:500}}>{meeting.klient||'—'}</div><div style={{fontFamily:'DM Mono',fontSize:11,color:'#A09890'}}>{meeting.call_time?format(parseISO(meeting.call_time),'dd.MM HH:mm'):''}</div><div style={{color:'#C07A1A',fontSize:12}}>{stars}</div><div><span style={{fontSize:10,padding:'2px 8px',borderRadius:20,fontFamily:'DM Mono',background:wb,color:wc,border:`1px solid ${wc}30`}}>{meeting.wynik||'—'}</span></div><div style={{color:'#A09890',fontSize:12,textAlign:'center',transition:'transform 0.2s',transform:isOpen?'rotate(180deg)':'none'}}>▼</div></div>{isOpen&&(<div style={{borderTop:'1px solid #E8E4DC',padding:'16px 20px',background:'#F9F8F5'}}><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:14}}><div>{meeting.co_powiedzial&&<div style={{fontSize:12,color:'#6B6560',lineHeight:1.6,marginBottom:8}}><strong>Temat:</strong> {meeting.co_powiedzial}</div>}{meeting.obiekcja&&<div style={{fontSize:12,color:'#6B6560',lineHeight:1.6,marginBottom:8}}><strong>Obiekcje:</strong> {meeting.obiekcja}</div>}{meeting.co_przeoczono&&<div style={{fontSize:12,color:'#6B6560',lineHeight:1.6}}><strong>Do poprawy:</strong> {meeting.co_przeoczono}</div>}</div><div>{meeting.akcja&&(<div style={{marginBottom:12}}><div style={{fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',color:'#A09890',marginBottom:8}}>Następny krok</div><div style={{fontSize:12,color:'#1A7A4A',lineHeight:1.6,paddingLeft:10,borderLeft:'2px solid #1A7A4A'}}>{meeting.akcja}</div></div>)}</div></div>{meeting.transcript&&(<div><div style={{fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',color:'#A09890',marginBottom:8}}>Fragment transkryptu</div><div style={{fontSize:12,color:'#6B6560',lineHeight:1.7,background:'#FFF',border:'1px solid #E8E4DC',borderRadius:8,padding:'12px 16px',maxHeight:200,overflowY:'auto',fontFamily:'DM Mono',whiteSpace:'pre-wrap'}}>{meeting.transcript}</div></div>)}</div>)}</div>);}
-function CallDetail({call,isOpen,onToggle}){const checks=[{key:'checklist_przedstawil',l:'Przedstawił'},{key:'checklist_szukal_lpr',l:'ŁPR'},{key:'checklist_spin',l:'SPIN'},{key:'checklist_parametry',l:'Parametry'},{key:'checklist_zoom',l:'Zoom'},{key:'checklist_nastepny_krok',l:'Następny krok'}];const stars='★'.repeat(call.ocena||0)+'☆'.repeat(5-(call.ocena||0));const wc=call.wynik==='gorący lead'?'#C0392B':call.wynik==='zainteresowany'?'#1A7A4A':'#A09890';const wb=call.wynik==='gorący lead'?'#FEF2F0':call.wynik==='zainteresowany'?'#EDF7F2':'#F9F8F5';return(<div style={{background:'#FFF',border:'1px solid #E8E4DC',borderRadius:12,overflow:'hidden',boxShadow:'0 1px 3px rgba(26,23,20,0.06)'}}><div onClick={onToggle} style={{display:'grid',gridTemplateColumns:'80px 80px 1fr auto auto auto 28px',alignItems:'center',gap:10,padding:'12px 16px',cursor:'pointer',background:isOpen?'#F9F8F5':'#FFF'}}><div style={{fontFamily:'DM Mono',fontSize:11,color:'#6B6560'}}>{call.call_time?format(parseISO(call.call_time),'dd.MM HH:mm'):''}</div><div style={{fontSize:11,fontWeight:500,color:call.sip==='123'?'#5A171E':'#8A9C00'}}>{call.sip==='123'?'Beata':'Kamil'}</div><div style={{fontSize:13,fontWeight:500}}>{call.klient||'—'}</div><div style={{fontFamily:'DM Mono',fontSize:11,color:'#A09890'}}>{call.duration}s</div><div style={{color:'#C07A1A',fontSize:12}}>{stars}</div><div><span style={{fontSize:10,padding:'2px 8px',borderRadius:20,fontFamily:'DM Mono',background:wb,color:wc,border:`1px solid ${wc}30`}}>{call.wynik||'—'}</span></div><div style={{color:'#A09890',fontSize:12,textAlign:'center',transition:'transform 0.2s',transform:isOpen?'rotate(180deg)':'none'}}>▼</div></div>{isOpen&&(<div style={{borderTop:'1px solid #E8E4DC',padding:'16px 20px',background:'#F9F8F5'}}><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:14}}><div><div style={{fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',color:'#A09890',marginBottom:8}}>Checklist skryptu</div><div style={{display:'flex',flexWrap:'wrap',gap:5,marginBottom:10}}>{checks.map(c=>(<span key={c.key} style={{fontSize:10,padding:'3px 8px',borderRadius:4,fontFamily:'DM Mono',background:call[c.key]?'#EDF7F2':'#FEF2F0',color:call[c.key]?'#1A7A4A':'#C0392B',border:`1px solid ${call[c.key]?'#9AD5BC':'#F5C0BB'}`}}>{call[c.key]?'✓':'✗'} {c.l}</span>))}</div>{call.co_powiedzial&&<div style={{fontSize:12,color:'#6B6560',lineHeight:1.6,marginBottom:6}}><strong>Klient:</strong> {call.co_powiedzial}</div>}{call.co_przeoczono&&<div style={{fontSize:12,color:'#6B6560',lineHeight:1.6}}><strong>Przeoczono:</strong> {call.co_przeoczono}</div>}</div><div>{call.akcja&&(<div style={{marginBottom:12}}><div style={{fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',color:'#A09890',marginBottom:8}}>Rekomendacja</div><div style={{fontSize:12,color:'#1A7A4A',lineHeight:1.6,paddingLeft:10,borderLeft:'2px solid #1A7A4A'}}>{call.akcja}</div></div>)}<div style={{display:'flex',gap:16}}><div style={{textAlign:'center'}}><div style={{fontSize:18,color:call.lpr?'#1A7A4A':'#C0392B'}}>{call.lpr?'✓':'✗'}</div><div style={{fontSize:10,color:'#A09890',fontFamily:'DM Mono'}}>ŁPR</div></div><div style={{textAlign:'center'}}><div style={{fontSize:14,color:'#C07A1A'}}>{stars}</div><div style={{fontSize:10,color:'#A09890',fontFamily:'DM Mono'}}>Ocena</div></div></div></div></div>{call.transcript&&(<div><div style={{fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',color:'#A09890',marginBottom:8}}>Pełny transkrypt</div><div style={{fontSize:12,color:'#6B6560',lineHeight:1.7,background:'#FFF',border:'1px solid #E8E4DC',borderRadius:8,padding:'12px 16px',maxHeight:200,overflowY:'auto',fontFamily:'DM Mono',whiteSpace:'pre-wrap'}}>{call.transcript}</div></div>)}</div>)}</div>);}
+function CallDetail({call,isOpen,onToggle}){
+  const {useState:us,useCallback:uc}=React;
+  const [dialog,setDialog]=us(null);
+  const [translation,setTranslation]=us(null);
+  const [loadingDialog,setLoadingDialog]=us(false);
+  const [loadingTranslation,setLoadingTranslation]=us(false);
+
+  const mgr=call.sip==='123'?'Beata':'Kamil';
+  const checks=[{key:'checklist_przedstawil',l:'Przedstawił'},{key:'checklist_szukal_lpr',l:'ŁPR'},{key:'checklist_spin',l:'SPIN'},{key:'checklist_parametry',l:'Parametry'},{key:'checklist_zoom',l:'Zoom'},{key:'checklist_nastepny_krok',l:'Następny krok'}];
+  const stars='★'.repeat(call.ocena||0)+'☆'.repeat(5-(call.ocena||0));
+  const wc=call.wynik==='gorący lead'?'#C0392B':call.wynik==='zainteresowany'?'#1A7A4A':'#A09890';
+  const wb=call.wynik==='gorący lead'?'#FEF2F0':call.wynik==='zainteresowany'?'#EDF7F2':'#F9F8F5';
+
+  const showDialog=uc(async()=>{
+    if(dialog){setDialog(null);return;}
+    if(!call.transcript){return;}
+    setLoadingDialog(true);
+    try{
+      const resp=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-6',
+          max_tokens:2000,
+          messages:[{role:'user',content:`Podziel ten transkrypt rozmowy sprzedażowej na dialog między menedżerem (${mgr}) a klientem. Zwróć TYLKO dialog w formacie:
+${mgr}: [tekst]
+Klient: [tekst]
+${mgr}: [tekst]
+Klient: [tekst]
+
+Jeśli nie możesz jednoznacznie przypisać fragmentu — przypisz do ${mgr} jeśli brzmi jak oferta/pytanie sprzedażowe, do Klient jeśli to odpowiedź/reakcja.
+
+Transkrypt:
+${call.transcript}`}]
+        })
+      });
+      const data=await resp.json();
+      setDialog(data.content?.[0]?.text||'Nie można przetworzyć');
+    }catch(e){setDialog('Błąd: '+e.message);}
+    setLoadingDialog(false);
+  },[call.transcript,dialog,mgr]);
+
+  const showTranslation=uc(async()=>{
+    if(translation){setTranslation(null);return;}
+    const text=dialog||call.transcript;
+    if(!text){return;}
+    setLoadingTranslation(true);
+    try{
+      const resp=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-6',
+          max_tokens:2000,
+          messages:[{role:'user',content:`Przetłumacz poniższy tekst na język polski. Zachowaj format jeśli jest dialogiem (${mgr}: / Klient:). Zwróć TYLKO tłumaczenie.
+
+${text}`}]
+        })
+      });
+      const data=await resp.json();
+      setTranslation(data.content?.[0]?.text||'Błąd tłumaczenia');
+    }catch(e){setTranslation('Błąd: '+e.message);}
+    setLoadingTranslation(false);
+  },[dialog,call.transcript,translation,mgr]);
+
+  const btnBase={fontSize:11,padding:'5px 12px',borderRadius:6,border:'1px solid',cursor:'pointer',fontFamily:'DM Mono',transition:'all 0.15s'};
+
+  return(
+    <div style={{background:'#FFF',border:'1px solid #E8E4DC',borderRadius:12,overflow:'hidden',boxShadow:'0 1px 3px rgba(26,23,20,0.06)'}}>
+      <div onClick={onToggle} style={{display:'grid',gridTemplateColumns:'80px 80px 1fr auto auto auto 28px',alignItems:'center',gap:10,padding:'12px 16px',cursor:'pointer',background:isOpen?'#F9F8F5':'#FFF'}}>
+        <div style={{fontFamily:'DM Mono',fontSize:11,color:'#6B6560'}}>{call.call_time?format(parseISO(call.call_time),'dd.MM HH:mm'):''}</div>
+        <div style={{fontSize:11,fontWeight:500,color:call.sip==='123'?'#5A171E':'#8A9C00'}}>{mgr}</div>
+        <div style={{fontSize:13,fontWeight:500}}>{call.klient||'—'}</div>
+        <div style={{fontFamily:'DM Mono',fontSize:11,color:'#A09890'}}>{call.duration}s</div>
+        <div style={{color:'#C07A1A',fontSize:12}}>{stars}</div>
+        <div><span style={{fontSize:10,padding:'2px 8px',borderRadius:20,fontFamily:'DM Mono',background:wb,color:wc,border:`1px solid ${wc}30`}}>{call.wynik||'—'}</span></div>
+        <div style={{color:'#A09890',fontSize:12,textAlign:'center',transition:'transform 0.2s',transform:isOpen?'rotate(180deg)':'none'}}>▼</div>
+      </div>
+      {isOpen&&(
+        <div style={{borderTop:'1px solid #E8E4DC',padding:'16px 20px',background:'#F9F8F5'}}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:14}}>
+            <div>
+              <div style={{fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',color:'#A09890',marginBottom:8}}>Checklist skryptu</div>
+              <div style={{display:'flex',flexWrap:'wrap',gap:5,marginBottom:10}}>
+                {checks.map(c=>(<span key={c.key} style={{fontSize:10,padding:'3px 8px',borderRadius:4,fontFamily:'DM Mono',background:call[c.key]?'#EDF7F2':'#FEF2F0',color:call[c.key]?'#1A7A4A':'#C0392B',border:`1px solid ${call[c.key]?'#9AD5BC':'#F5C0BB'}`}}>{call[c.key]?'✓':'✗'} {c.l}</span>))}
+              </div>
+              {call.co_powiedzial&&<div style={{fontSize:12,color:'#6B6560',lineHeight:1.6,marginBottom:6}}><strong>Klient:</strong> {call.co_powiedzial}</div>}
+              {call.co_przeoczono&&<div style={{fontSize:12,color:'#6B6560',lineHeight:1.6}}><strong>Przeoczono:</strong> {call.co_przeoczono}</div>}
+            </div>
+            <div>
+              {call.akcja&&(<div style={{marginBottom:12}}>
+                <div style={{fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',color:'#A09890',marginBottom:8}}>Rekomendacja</div>
+                <div style={{fontSize:12,color:'#1A7A4A',lineHeight:1.6,paddingLeft:10,borderLeft:'2px solid #1A7A4A'}}>{call.akcja}</div>
+              </div>)}
+              <div style={{display:'flex',gap:16}}>
+                <div style={{textAlign:'center'}}><div style={{fontSize:18,color:call.lpr?'#1A7A4A':'#C0392B'}}>{call.lpr?'✓':'✗'}</div><div style={{fontSize:10,color:'#A09890',fontFamily:'DM Mono'}}>ŁPR</div></div>
+                <div style={{textAlign:'center'}}><div style={{fontSize:14,color:'#C07A1A'}}>{stars}</div><div style={{fontSize:10,color:'#A09890',fontFamily:'DM Mono'}}>Ocena</div></div>
+              </div>
+            </div>
+          </div>
+
+          {call.transcript&&(
+            <div>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+                <div style={{fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',color:'#A09890'}}>Transkrypt</div>
+                <div style={{display:'flex',gap:6}}>
+                  {call.transcript&&(
+                    <button onClick={showDialog} style={{...btnBase,borderColor:dialog?'#5A171E':'#E8E4DC',background:dialog?'#F4ECED':'#FFF',color:dialog?'#5A171E':'#6B6560'}}>
+                      {loadingDialog?'⏳ Ładuję...':(dialog?'✕ Dialog':'💬 Pokaż dialog')}
+                    </button>
+                  )}
+                  <button onClick={showTranslation} style={{...btnBase,borderColor:translation?'#1A7A4A':'#E8E4DC',background:translation?'#EDF7F2':'#FFF',color:translation?'#1A7A4A':'#6B6560'}}>
+                    {loadingTranslation?'⏳ Tłumaczę...':(translation?'✕ Tłumaczenie':'🇵🇱 Przetłumacz')}
+                  </button>
+                </div>
+              </div>
+
+              {/* Dialog view */}
+              {dialog&&(
+                <div style={{background:'#FFF',border:'1px solid #E8E4DC',borderRadius:8,padding:'12px 16px',marginBottom:8,maxHeight:300,overflowY:'auto'}}>
+                  {dialog.split('\n').filter(l=>l.trim()).map((line,i)=>{
+                    const isManager=line.startsWith(mgr+':');
+                    const isClient=line.startsWith('Klient:');
+                    const speaker=isManager?mgr:isClient?'Klient':null;
+                    const text=speaker?line.substring(speaker.length+1).trim():line;
+                    if(!speaker)return<div key={i} style={{fontSize:11,color:'#A09890',fontFamily:'DM Mono',padding:'2px 0'}}>{line}</div>;
+                    return(
+                      <div key={i} style={{display:'flex',gap:8,marginBottom:6,flexDirection:isManager?'row':'row-reverse'}}>
+                        <div style={{fontSize:10,fontWeight:600,color:isManager?'#5A171E':'#8A9C00',minWidth:42,textAlign:isManager?'left':'right',fontFamily:'DM Mono',paddingTop:2}}>{speaker}</div>
+                        <div style={{flex:1,background:isManager?'#F4ECED':'#F7FAE6',borderRadius:8,padding:'6px 10px',fontSize:12,color:'#1A1714',lineHeight:1.5,maxWidth:'80%'}}>{text}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Translation view */}
+              {translation&&(
+                <div style={{background:'#EDF7F2',border:'1px solid #9AD5BC',borderRadius:8,padding:'12px 16px',marginBottom:8,maxHeight:300,overflowY:'auto'}}>
+                  <div style={{fontSize:10,fontFamily:'DM Mono',color:'#1A7A4A',marginBottom:8,textTransform:'uppercase'}}>🇵🇱 Tłumaczenie na polski</div>
+                  {translation.split('\n').filter(l=>l.trim()).map((line,i)=>{
+                    const isManager=line.startsWith(mgr+':');
+                    const isClient=line.startsWith('Klient:');
+                    const speaker=isManager?mgr:isClient?'Klient':null;
+                    const text=speaker?line.substring(speaker.length+1).trim():line;
+                    if(!speaker)return<div key={i} style={{fontSize:12,color:'#1A1714',lineHeight:1.6,padding:'2px 0'}}>{line}</div>;
+                    return(
+                      <div key={i} style={{display:'flex',gap:8,marginBottom:6,flexDirection:isManager?'row':'row-reverse'}}>
+                        <div style={{fontSize:10,fontWeight:600,color:isManager?'#5A171E':'#8A9C00',minWidth:42,textAlign:isManager?'left':'right',fontFamily:'DM Mono',paddingTop:2}}>{speaker}</div>
+                        <div style={{flex:1,background:isManager?'#F4ECED':'#F7FAE6',borderRadius:8,padding:'6px 10px',fontSize:12,color:'#1A1714',lineHeight:1.5,maxWidth:'80%'}}>{text}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Raw transcript */}
+              {!dialog&&!translation&&(
+                <div style={{fontSize:12,color:'#6B6560',lineHeight:1.7,background:'#FFF',border:'1px solid #E8E4DC',borderRadius:8,padding:'12px 16px',maxHeight:200,overflowY:'auto',fontFamily:'DM Mono',whiteSpace:'pre-wrap'}}>
+                  {call.transcript}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

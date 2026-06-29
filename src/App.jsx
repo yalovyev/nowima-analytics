@@ -573,8 +573,6 @@ function CallDetail({call,isOpen,onToggle}){
   const {useState:us,useCallback:uc}=React;
   const [dialog,setDialog]=us(null);
   const [translation,setTranslation]=us(null);
-  const [loadingDialog,setLoadingDialog]=us(false);
-  const [loadingTranslation,setLoadingTranslation]=us(false);
 
   const mgr=call.sip==='123'?'Beata':'Kamil';
   const checks=[{key:'checklist_przedstawil',l:'Przedstawił'},{key:'checklist_szukal_lpr',l:'ŁPR'},{key:'checklist_spin',l:'SPIN'},{key:'checklist_parametry',l:'Parametry'},{key:'checklist_zoom',l:'Zoom'},{key:'checklist_nastepny_krok',l:'Następny krok'}];
@@ -582,58 +580,15 @@ function CallDetail({call,isOpen,onToggle}){
   const wc=call.wynik==='gorący lead'?'#C0392B':call.wynik==='zainteresowany'?'#1A7A4A':'#A09890';
   const wb=call.wynik==='gorący lead'?'#FEF2F0':call.wynik==='zainteresowany'?'#EDF7F2':'#F9F8F5';
 
-  const showDialog=uc(async()=>{
+  const showDialog=uc(()=>{
     if(dialog){setDialog(null);return;}
-    if(!call.transcript){return;}
-    setLoadingDialog(true);
-    try{
-      const resp=await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          model:'claude-sonnet-4-6',
-          max_tokens:2000,
-          messages:[{role:'user',content:`Podziel ten transkrypt rozmowy sprzedażowej na dialog między menedżerem (${mgr}) a klientem. Zwróć TYLKO dialog w formacie:
-${mgr}: [tekst]
-Klient: [tekst]
-${mgr}: [tekst]
-Klient: [tekst]
-
-Jeśli nie możesz jednoznacznie przypisać fragmentu — przypisz do ${mgr} jeśli brzmi jak oferta/pytanie sprzedażowe, do Klient jeśli to odpowiedź/reakcja.
-
-Transkrypt:
-${call.transcript}`}]
-        })
-      });
-      const data=await resp.json();
-      setDialog(data.content?.[0]?.text||'Nie można przetworzyć');
-    }catch(e){setDialog('Błąd: '+e.message);}
-    setLoadingDialog(false);
-  },[call.transcript,dialog,mgr]);
-
-  const showTranslation=uc(async()=>{
+    const d=call.dialog||call.transcript||'Brak transkryptu';
+    setDialog(d);
+  },[dialog,call]);
+  const showTranslation=uc(()=>{
     if(translation){setTranslation(null);return;}
-    const text=dialog||call.transcript;
-    if(!text){return;}
-    setLoadingTranslation(true);
-    try{
-      const resp=await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          model:'claude-sonnet-4-6',
-          max_tokens:2000,
-          messages:[{role:'user',content:`Przetłumacz poniższy tekst na język polski. Zachowaj format jeśli jest dialogiem (${mgr}: / Klient:). Zwróć TYLKO tłumaczenie.
-
-${text}`}]
-        })
-      });
-      const data=await resp.json();
-      setTranslation(data.content?.[0]?.text||'Błąd tłumaczenia');
-    }catch(e){setTranslation('Błąd: '+e.message);}
-    setLoadingTranslation(false);
-  },[dialog,call.transcript,translation,mgr]);
-
+    setTranslation('Tłumaczenie będzie dostępne dla nowych rozmów po aktualizacji systemu.');
+  },[translation]);
   const btnBase={fontSize:11,padding:'5px 12px',borderRadius:6,border:'1px solid',cursor:'pointer',fontFamily:'DM Mono',transition:'all 0.15s'};
 
   return(
@@ -677,11 +632,11 @@ ${text}`}]
                 <div style={{display:'flex',gap:6}}>
                   {call.transcript&&(
                     <button onClick={showDialog} style={{...btnBase,borderColor:dialog?'#5A171E':'#E8E4DC',background:dialog?'#F4ECED':'#FFF',color:dialog?'#5A171E':'#6B6560'}}>
-                      {loadingDialog?'⏳ Ładuję...':(dialog?'✕ Dialog':'💬 Pokaż dialog')}
+                      {dialog?'✕ Dialog':'💬 Pokaż dialog'}
                     </button>
                   )}
                   <button onClick={showTranslation} style={{...btnBase,borderColor:translation?'#1A7A4A':'#E8E4DC',background:translation?'#EDF7F2':'#FFF',color:translation?'#1A7A4A':'#6B6560'}}>
-                    {loadingTranslation?'⏳ Tłumaczę...':(translation?'✕ Tłumaczenie':'🇵🇱 Przetłumacz')}
+                    {translation?'✕ Tłumaczenie':'🇵🇱 Przetłumacz'}
                   </button>
                 </div>
               </div>

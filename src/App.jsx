@@ -172,29 +172,31 @@ export default function App() {
   const totalPortfolioPages = Math.ceil(filteredCompanies.length / PAGE_SIZE);
 
   // Stats
-  // TOP calls - independent data fetch
+  // TOP calls - independent Supabase fetch
   const [topCalls, setTopCalls] = useState([]);
   const [topLoading, setTopLoading] = useState(false);
 
   const fetchTopCalls = useCallback(async () => {
     setTopLoading(true);
-    let query = supabase.from('calls').select('*')
-      .neq('sip', 'meeting')
-      .not('typ_rozmowy', 'in', '(bot_niedozwon,operacyjny)')
-      .not('wynik_procentowy', 'is', null)
-      .not('transcript', 'is', null);
-    if (onboardingStart) query = query.gte('call_time', onboardingStart);
-    if (onboardingEnd) query = query.lte('call_time', onboardingEnd + 'T23:59:59');
-    if (mgr === 'beata') query = query.or('sip.eq.123,manager.eq.Beata Janoszka');
-    if (mgr === 'kamil') query = query.or('sip.eq.119,manager.eq.Kamil Wisniewski,manager.eq.Kamil Wiśniewski');
-    if (onboardingType === 'best') {
-      query = query.order('wynik_procentowy', { ascending: false });
-    } else {
-      query = query.order('wynik_procentowy', { ascending: true });
+    try {
+      let query = supabase.from('calls').select('*')
+        .neq('sip', 'meeting')
+        .not('wynik_procentowy', 'is', null)
+        .not('transcript', 'is', null)
+        .neq('typ_rozmowy', 'bot_niedozwon')
+        .neq('typ_rozmowy', 'operacyjny');
+      if (onboardingStart) query = query.gte('call_time', onboardingStart);
+      if (onboardingEnd) query = query.lte('call_time', onboardingEnd + 'T23:59:59');
+      if (mgr === 'beata') query = query.or('sip.eq.123,manager.eq.Beata Janoszka');
+      if (mgr === 'kamil') query = query.or('sip.eq.119,manager.eq.Kamil Wisniewski,manager.eq.Kamil Wiśniewski');
+      query = query.order('wynik_procentowy', { ascending: onboardingType !== 'best' });
+      query = query.limit(onboardingLimit);
+      const { data, error } = await query;
+      if (error) console.error('TOP query error:', error);
+      setTopCalls(data || []);
+    } catch(e) {
+      console.error('fetchTopCalls error:', e);
     }
-    query = query.limit(onboardingLimit);
-    const { data } = await query;
-    setTopCalls(data || []);
     setTopLoading(false);
   }, [onboardingType, onboardingStart, onboardingEnd, onboardingLimit, mgr]);
 
@@ -506,7 +508,7 @@ export default function App() {
                 <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
                   <button onClick={fetchTopCalls} style={{padding:'7px 16px',borderRadius:8,border:`1px solid ${C.brand}`,background:C.brandLight,color:C.brand,cursor:'pointer',fontSize:12,fontFamily:'DM Mono',fontWeight:600}}>🔍 Szukaj</button>
                   <span style={{fontFamily:'Outfit',fontWeight:700,fontSize:11,textTransform:'uppercase',letterSpacing:'0.1em',color:onboardingType==='best'?C.green:C.red}}>
-                    {topLoading ? '⏳ Ładuję...' : (onboardingType==='best'?'⭐ TOP +':'📉 TOP —') + ' · ' + onboardingCalls.length + ' rozmów'}
+                    {topLoading ? '⏳ Ładuję...' : ((onboardingType==='best'?'⭐ TOP +':'📉 TOP —') + ' · ' + onboardingCalls.length + ' rozmów')}
                   </span>
                   {(onboardingStart||onboardingEnd)&&<span style={{fontSize:11,color:C.text3,fontFamily:'DM Mono'}}>{onboardingStart||'...'} — {onboardingEnd||'...'}</span>}
                 </div>
@@ -556,7 +558,7 @@ export default function App() {
                       </div>
                     );
                   })}
-                  {!topLoading&&onboardingCalls.length===0&&<div style={{textAlign:'center',padding:40,color:C.text3,fontFamily:'DM Mono'}}>Brak rozmów — wybierz zakres dat i kliknij Szukaj</div>}
+                  {!topLoading&&onboardingCalls.length===0&&<div style={{textAlign:'center',padding:40,color:C.text3,fontFamily:'DM Mono'}}>Brak rozmów — kliknij 🔍 Szukaj</div>}
                 </div>
               </>
             )}

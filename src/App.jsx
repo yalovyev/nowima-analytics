@@ -172,19 +172,37 @@ export default function App() {
   const totalPortfolioPages = Math.ceil(filteredCompanies.length / PAGE_SIZE);
 
   // Stats
-  // Onboarding calls
-  const onboardingCalls = useMemo(() => {
-    let d = allData.filter(c => c.sip !== 'meeting' && c.typ_rozmowy && !['bot_niedozwon','operacyjny'].includes(c.typ_rozmowy) && c.wynik_procentowy != null && c.transcript);
-    if (onboardingStart) d = d.filter(c => c.call_time >= onboardingStart);
-    if (onboardingEnd) d = d.filter(c => c.call_time <= onboardingEnd + 'T23:59:59');
-    if (mgr === 'beata') d = d.filter(c => c.sip === '123' || c.manager === 'Beata Janoszka');
-    if (mgr === 'kamil') d = d.filter(c => c.sip === '119' || c.manager === 'Kamil Wisniewski' || c.manager === 'Kamil Wiśniewski');
+  // TOP calls - independent data fetch
+  const [topCalls, setTopCalls] = useState([]);
+  const [topLoading, setTopLoading] = useState(false);
+
+  const fetchTopCalls = useCallback(async () => {
+    setTopLoading(true);
+    let query = supabase.from('calls').select('*')
+      .neq('sip', 'meeting')
+      .not('typ_rozmowy', 'in', '(bot_niedozwon,operacyjny)')
+      .not('wynik_procentowy', 'is', null)
+      .not('transcript', 'is', null);
+    if (onboardingStart) query = query.gte('call_time', onboardingStart);
+    if (onboardingEnd) query = query.lte('call_time', onboardingEnd + 'T23:59:59');
+    if (mgr === 'beata') query = query.or('sip.eq.123,manager.eq.Beata Janoszka');
+    if (mgr === 'kamil') query = query.or('sip.eq.119,manager.eq.Kamil Wisniewski,manager.eq.Kamil Wiśniewski');
     if (onboardingType === 'best') {
-      return [...d].sort((a,b) => b.wynik_procentowy - a.wynik_procentowy).slice(0, onboardingLimit);
+      query = query.order('wynik_procentowy', { ascending: false });
     } else {
-      return [...d].sort((a,b) => a.wynik_procentowy - b.wynik_procentowy).slice(0, onboardingLimit);
+      query = query.order('wynik_procentowy', { ascending: true });
     }
-  }, [allData, onboardingType, onboardingStart, onboardingEnd, onboardingLimit, mgr]);
+    query = query.limit(onboardingLimit);
+    const { data } = await query;
+    setTopCalls(data || []);
+    setTopLoading(false);
+  }, [onboardingType, onboardingStart, onboardingEnd, onboardingLimit, mgr]);
+
+  useEffect(() => {
+    if (view === 'onboarding') fetchTopCalls();
+  }, [view, fetchTopCalls]);
+
+  const onboardingCalls = topCalls;
 
   const beataPhone = phoneCalls.filter(c => c.sip === '123' || c.manager === 'Beata Janoszka');
   const kamilPhone = phoneCalls.filter(c => c.sip === '119' || c.manager === 'Kamil Wisniewski' || c.manager === 'Kamil Wiśniewski');
@@ -485,9 +503,10 @@ export default function App() {
                 </div>
 
                 {/* Results */}
-                <div style={{marginBottom:12,display:'flex',alignItems:'center',gap:8}}>
+                <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
+                  <button onClick={fetchTopCalls} style={{padding:'7px 16px',borderRadius:8,border:`1px solid ${C.brand}`,background:C.brandLight,color:C.brand,cursor:'pointer',fontSize:12,fontFamily:'DM Mono',fontWeight:600}}>🔍 Szukaj</button>
                   <span style={{fontFamily:'Outfit',fontWeight:700,fontSize:11,textTransform:'uppercase',letterSpacing:'0.1em',color:onboardingType==='best'?C.green:C.red}}>
-                    {onboardingType==='best'?'⭐ TOP +':'📉 TOP —'} {onboardingCalls.length} rozmów
+                    {topLoading ? '⏳ Ładuję...' : (onboardingType==='best'?'⭐ TOP +':'📉 TOP —') + ' · ' + onboardingCalls.length + ' rozmów'}
                   </span>
                   {(onboardingStart||onboardingEnd)&&<span style={{fontSize:11,color:C.text3,fontFamily:'DM Mono'}}>{onboardingStart||'...'} — {onboardingEnd||'...'}</span>}
                 </div>
@@ -537,7 +556,7 @@ export default function App() {
                       </div>
                     );
                   })}
-                  {onboardingCalls.length===0&&<div style={{textAlign:'center',padding:40,color:C.text3,fontFamily:'DM Mono'}}>Brak rozmów spełniających kryteria</div>}
+                  {!topLoading&&onboardingCalls.length===0&&<div style={{textAlign:'center',padding:40,color:C.text3,fontFamily:'DM Mono'}}>Brak rozmów — wybierz zakres dat i kliknij Szukaj</div>}
                 </div>
               </>
             )}

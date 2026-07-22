@@ -36,6 +36,10 @@ export default function App() {
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [activeCall, setActiveCall] = useState(null);
   const [view, setView] = useState('calls');
+  const [onboardingType, setOnboardingType] = useState('best');  // 'best' | 'worst'
+  const [onboardingStart, setOnboardingStart] = useState('');
+  const [onboardingEnd, setOnboardingEnd] = useState('');
+  const [onboardingLimit, setOnboardingLimit] = useState(10);
   const [search, setSearch] = useState('');
   const [callTypeFilter, setCallTypeFilter] = useState('all');
   const [portfolioSearch, setPortfolioSearch] = useState('');
@@ -124,6 +128,20 @@ export default function App() {
   const totalPortfolioPages = Math.ceil(filteredCompanies.length / PAGE_SIZE);
 
   // Stats
+  // Onboarding calls
+  const onboardingCalls = useMemo(() => {
+    let d = allData.filter(c => c.sip !== 'meeting' && c.typ_rozmowy && !['bot_niedozwon','operacyjny'].includes(c.typ_rozmowy) && c.wynik_procentowy != null && c.transcript);
+    if (onboardingStart) d = d.filter(c => c.call_time >= onboardingStart);
+    if (onboardingEnd) d = d.filter(c => c.call_time <= onboardingEnd + 'T23:59:59');
+    if (mgr === 'beata') d = d.filter(c => c.sip === '123' || c.manager === 'Beata Janoszka');
+    if (mgr === 'kamil') d = d.filter(c => c.sip === '119' || c.manager === 'Kamil Wisniewski' || c.manager === 'Kamil Wiśniewski');
+    if (onboardingType === 'best') {
+      return [...d].sort((a,b) => b.wynik_procentowy - a.wynik_procentowy).slice(0, onboardingLimit);
+    } else {
+      return [...d].sort((a,b) => a.wynik_procentowy - b.wynik_procentowy).slice(0, onboardingLimit);
+    }
+  }, [allData, onboardingType, onboardingStart, onboardingEnd, onboardingLimit, mgr]);
+
   const beataPhone = phoneCalls.filter(c => c.sip === '123' || c.manager === 'Beata Janoszka');
   const kamilPhone = phoneCalls.filter(c => c.sip === '119' || c.manager === 'Kamil Wisniewski' || c.manager === 'Kamil Wiśniewski');
 
@@ -149,6 +167,20 @@ export default function App() {
     });
     return Object.entries(errors).filter(([,v]) => v > 1).sort((a,b)=>b[1]-a[1]).slice(0, 5);
   }, [phoneCalls]);
+
+  const exportOnboardingCSV = () => {
+    const h = ['#','Data','Menedżer','Klient','%','Typ','Wynik','Akcja','Do poprawy','Bitrix'];
+    const rows = onboardingCalls.map((c,i) => [
+      i+1,
+      c.call_time ? format(parseISO(c.call_time),'dd.MM.yyyy HH:mm') : '',
+      c.manager, c.klient||'', c.wynik_procentowy||'',
+      c.typ_rozmowy||'', c.wynik||'', c.akcja||'', c.do_poprawy||'', c.bitrix_url||''
+    ]);
+    const csv = [h,...rows].map(r=>r.join(';')).join('\n');
+    const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `nowima_top_${onboardingType}_${format(new Date(),'yyyy-MM-dd')}.csv`; a.click();
+  };
 
   const exportCSV = () => {
     const h = ['Data','Menedżer','Klient','Czas','ŁPR','Wynik','%','Typ','Akcja'];
@@ -186,7 +218,7 @@ export default function App() {
             </div>
             <div style={{ padding:'20px' }}>
               <div style={{ fontSize:10, fontFamily:'DM Mono', textTransform:'uppercase', color:C.text3, marginBottom:10, letterSpacing:'0.08em' }}>Widok</div>
-              {[['calls','📞 Rozmowy'],['portfolio','🏢 Portfel firm']].map(([v,label]) => (
+              {[['calls','📞 Rozmowy'],['onboarding','⭐ TOP'],['portfolio','🏢 Portfel firm']].map(([v,label]) => (
                 <div key={v} onClick={() => { setView(v); setSidebarOpen(false); }} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:8, marginBottom:4, cursor:'pointer', background:view===v ? C.brandLight : 'transparent', border:`1px solid ${view===v ? C.brandBorder : 'transparent'}` }}>
                   <div style={{ fontSize:12, fontWeight:500, color:view===v ? C.brand : C.text }}>{label}</div>
                   {view===v && <div style={{ marginLeft:'auto', color:C.brand, fontSize:12 }}>✓</div>}
@@ -367,6 +399,100 @@ export default function App() {
                     ))}
                     {filtered.length === 0 && <div style={{ textAlign:'center', padding:40, color:C.text3, fontFamily:'DM Mono', fontSize:13 }}>Brak rozmów spełniających kryteria</div>}
                   </div>
+                </div>
+              </>
+            )}
+
+            {/* ── ONBOARDING VIEW ── */}
+            {view === 'onboarding' && (
+              <>
+                <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:'20px',marginBottom:24}}>
+                  <div style={{fontFamily:'Outfit',fontWeight:700,fontSize:13,textTransform:'uppercase',letterSpacing:'0.1em',color:C.brand,marginBottom:16}}>⭐ TOP + i TOP — najlepsze i najsłabsze rozmowy</div>
+                  
+                  {/* Type selector */}
+                  <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}}>
+                    <button onClick={()=>setOnboardingType('best')} style={{padding:'8px 20px',borderRadius:8,border:`1px solid ${onboardingType==='best'?C.green:C.border}`,background:onboardingType==='best'?C.greenLight:C.surface,color:onboardingType==='best'?C.green:C.text2,cursor:'pointer',fontFamily:'DM Mono',fontSize:12,fontWeight:600}}>
+                      ⭐ TOP +
+                    </button>
+                    <button onClick={()=>setOnboardingType('worst')} style={{padding:'8px 20px',borderRadius:8,border:`1px solid ${onboardingType==='worst'?C.red:C.border}`,background:onboardingType==='worst'?C.redLight:C.surface,color:onboardingType==='worst'?C.red:C.text2,cursor:'pointer',fontFamily:'DM Mono',fontSize:12,fontWeight:600}}>
+                      📉 TOP —
+                    </button>
+                  </div>
+
+                  {/* Filters */}
+                  <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'flex-end'}}>
+                    <div>
+                      <div style={{fontSize:11,color:C.text3,fontFamily:'DM Mono',marginBottom:4}}>Od:</div>
+                      <input type="date" value={onboardingStart} onChange={e=>setOnboardingStart(e.target.value)} style={{padding:'7px 10px',borderRadius:8,border:`1px solid ${C.border}`,fontSize:12,outline:'none',background:C.surface}}/>
+                    </div>
+                    <div>
+                      <div style={{fontSize:11,color:C.text3,fontFamily:'DM Mono',marginBottom:4}}>Do:</div>
+                      <input type="date" value={onboardingEnd} onChange={e=>setOnboardingEnd(e.target.value)} style={{padding:'7px 10px',borderRadius:8,border:`1px solid ${C.border}`,fontSize:12,outline:'none',background:C.surface}}/>
+                    </div>
+                    <div>
+                      <div style={{fontSize:11,color:C.text3,fontFamily:'DM Mono',marginBottom:4}}>Liczba:</div>
+                      <select value={onboardingLimit} onChange={e=>setOnboardingLimit(Number(e.target.value))} style={{padding:'7px 10px',borderRadius:8,border:`1px solid ${C.border}`,fontSize:12,outline:'none',background:C.surface,cursor:'pointer'}}>
+                        {[5,10,15,20].map(n=><option key={n} value={n}>{n} rozmów</option>)}
+                      </select>
+                    </div>
+                    <button onClick={()=>{setOnboardingStart('');setOnboardingEnd('');}} style={{padding:'7px 14px',borderRadius:8,border:`1px solid ${C.border}`,background:C.surface,color:C.text3,cursor:'pointer',fontSize:12,fontFamily:'DM Mono'}}>✕ Reset</button>
+                    <button onClick={exportOnboardingCSV} style={{padding:'7px 16px',borderRadius:8,border:`1px solid ${C.brand}`,background:C.brandLight,color:C.brand,cursor:'pointer',fontSize:12,fontFamily:'DM Mono',fontWeight:600,marginLeft:'auto'}}>⬇ Eksportuj CSV</button>
+                  </div>
+                </div>
+
+                {/* Results */}
+                <div style={{marginBottom:12,display:'flex',alignItems:'center',gap:8}}>
+                  <span style={{fontFamily:'Outfit',fontWeight:700,fontSize:11,textTransform:'uppercase',letterSpacing:'0.1em',color:onboardingType==='best'?C.green:C.red}}>
+                    {onboardingType==='best'?'⭐ TOP +':'📉 TOP —'} {onboardingCalls.length} rozmów
+                  </span>
+                  {(onboardingStart||onboardingEnd)&&<span style={{fontSize:11,color:C.text3,fontFamily:'DM Mono'}}>{onboardingStart||'...'} — {onboardingEnd||'...'}</span>}
+                </div>
+
+                <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                  {onboardingCalls.map((call,i) => {
+                    const pct = call.wynik_procentowy;
+                    const mgr2 = call.sip==='123'||call.manager==='Beata Janoszka'?'Beata':'Kamil';
+                    const mgrColor2 = mgr2==='Beata'?C.beata:C.kamil;
+                    const typ = call.typ_rozmowy;
+                    const typEmoji = {zimny_telefon:'❄️',sekretariat:'📋',kontakt_z_lpr:'🎯',followup_po_materialach:'📨',followup_bez_materialow:'🔄'}[typ]||'📞';
+                    const pctColor = pct>=70?C.green:pct>=40?C.amber:C.red;
+                    return(
+                      <div key={call.id} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,overflow:'hidden',borderLeft:`4px solid ${pctColor}`}}>
+                        <div style={{display:'grid',gridTemplateColumns:'32px 1fr auto auto auto',alignItems:'center',gap:10,padding:'12px 16px'}}>
+                          <div style={{fontFamily:'Outfit',fontWeight:800,fontSize:18,color:pctColor,lineHeight:1}}>{i+1}</div>
+                          <div>
+                            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:3}}>
+                              <span style={{fontSize:13,fontWeight:600}}>{call.klient||'—'}</span>
+                              <span style={{fontSize:11,color:mgrColor2,fontFamily:'DM Mono',fontWeight:600}}>{mgr2}</span>
+                              <span style={{fontSize:11,color:C.text3,fontFamily:'DM Mono'}}>{call.call_time?format(parseISO(call.call_time),'dd.MM.yyyy HH:mm'):''}</span>
+                              <span style={{fontSize:11}}>{typEmoji} {typ?.replace(/_/g,' ')}</span>
+                            </div>
+                            {call.akcja&&<div style={{fontSize:12,color:onboardingType==='best'?C.green:C.red,lineHeight:1.4}}>→ {call.akcja}</div>}
+                            {call.do_poprawy&&onboardingType==='worst'&&<div style={{fontSize:12,color:C.amber,lineHeight:1.4,marginTop:3}}>📈 {call.do_poprawy}</div>}
+                          </div>
+                          <div style={{textAlign:'center'}}>
+                            <div style={{fontFamily:'Outfit',fontWeight:800,fontSize:24,color:pctColor,lineHeight:1}}>{pct}%</div>
+                            <div style={{fontSize:10,color:C.text3,fontFamily:'DM Mono'}}>{call.wynik||''}</div>
+                          </div>
+                          <div style={{display:'flex',flexDirection:'column',gap:4,alignItems:'flex-end'}}>
+                            {call.bitrix_url&&<a href={call.bitrix_url} target="_blank" rel="noreferrer" style={{fontSize:11,color:C.brand,fontFamily:'DM Mono',textDecoration:'none',padding:'3px 8px',borderRadius:4,border:`1px solid ${C.brandBorder}`,background:C.brandLight}}>Bitrix →</a>}
+                          </div>
+                          <div style={{color:C.text3,fontSize:12,cursor:'pointer'}} onClick={()=>setActiveCall(activeCall===call.id?null:call.id)}>▼</div>
+                        </div>
+                        {activeCall===call.id&&(
+                          <div style={{borderTop:`1px solid ${C.border}`,padding:'14px 18px',background:C.surface2}}>
+                            {call.cytat_klienta&&<div style={{fontSize:12,color:C.text2,fontStyle:'italic',marginBottom:8}}>💬 "{call.cytat_klienta}"</div>}
+                            {call.obiekcja&&<div style={{fontSize:12,color:C.red,marginBottom:6}}>🛑 {call.obiekcja}</div>}
+                            {call.powod_sukcesu&&<div style={{fontSize:12,color:C.text2,marginBottom:8,lineHeight:1.5}}>{call.powod_sukcesu}</div>}
+                            {call.transcript&&(
+                              <div style={{fontSize:11,color:C.text3,lineHeight:1.7,background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:'10px 14px',maxHeight:200,overflowY:'auto',fontFamily:'DM Mono',whiteSpace:'pre-wrap'}}>{(call.dialog||call.transcript).substring(0,600)}...</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {onboardingCalls.length===0&&<div style={{textAlign:'center',padding:40,color:C.text3,fontFamily:'DM Mono'}}>Brak rozmów spełniających kryteria</div>}
                 </div>
               </>
             )}

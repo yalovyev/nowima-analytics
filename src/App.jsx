@@ -140,7 +140,7 @@ export default function App() {
   }, [allData, mgr, source]);
 
   const phoneCalls = useMemo(() => calls.filter(c => c.sip !== 'meeting'), [calls]);
-  const meetings = useMemo(() => calls.filter(c => c.sip === 'meeting'), [calls]);
+  const meetings = useMemo(() => allData.filter(c => c.sip === 'meeting').filter(c => mgr === 'all' || (mgr === 'beata' && (c.manager === 'Beata Janoszka')) || (mgr === 'kamil' && (c.manager === 'Kamil Wisniewski' || c.manager === 'Kamil Wiśniewski'))), [allData, mgr]);
   const over60 = useMemo(() => phoneCalls.filter(c => c.duration > 60), [phoneCalls]);
   const lprCalls = useMemo(() => phoneCalls.filter(c => c.lpr), [phoneCalls]);
   const hot = useMemo(() => calls.filter(c => c.wynik === 'gorący lead'), [calls]);
@@ -340,19 +340,12 @@ export default function App() {
             {view === 'calls' && (
               <>
                 {/* KPI row */}
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12, marginBottom:16 }}>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12, marginBottom:24 }}>
                   <KpiCard label="Wszystkie rozmowy" value={phoneCalls.length} accent={C.brand} sub={`${bots.length} botów/niedozwon`}/>
                   <KpiCard label="Powyżej 60s" value={over60.length} accent={C.amber} sub={`${phoneCalls.length > 0 ? Math.round(over60.length/phoneCalls.length*100) : 0}% wszystkich`}/>
                   <KpiCard label="Z ŁPR" value={lprCalls.length} good accent={C.green} sub={`${over60.length > 0 ? Math.round(lprCalls.length/over60.length*100) : 0}% z rozmów 60s+`}/>
                   <KpiCard label="Gorące leady" value={hot.length} accent={C.red} sub="gorący lead" good={hot.length>0}/>
                   <KpiCard label="Śr. ocena" value={avgPct(phoneCalls) != null ? avgPct(phoneCalls)+'%' : '—'} accent={C.blue} sub="wynik procentowy"/>
-                </div>
-                {/* KPI row 2 - video */}
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:24 }}>
-                  <KpiCard label="Spotkania wideo" value={meetings.length} accent="#2B5BDB" sub={meetings.length>0?`${meetings.filter(m=>m.sukces_poziom==='sukces').length} sukces`:'brak spotkań'}/>
-                  <KpiCard label="Propozycje Zoom" value={phoneCalls.filter(c=>c.checklist_zoom).length} accent="#7B5EA7" sub={`${over60.length>0?Math.round(phoneCalls.filter(c=>c.checklist_zoom).length/over60.length*100):0}% rozmów 60s+`}/>
-                  <KpiCard label="Follow-upy" value={phoneCalls.filter(c=>['followup_po_materialach','followup_bez_materialow'].includes(c.typ_rozmowy)).length} accent={C.amber} sub="umówione follow-upy"/>
-                  <KpiCard label="Sukces wg kryteriów" value={phoneCalls.filter(c=>c.sukces_wg_kryteriow).length} good accent={C.green} sub={`${over60.length>0?Math.round(phoneCalls.filter(c=>c.sukces_wg_kryteriow).length/over60.length*100):0}% z rozmów 60s+`}/>
                 </div>
 
                 {/* Manager comparison */}

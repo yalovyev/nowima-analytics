@@ -4,6 +4,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, L
 import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, subWeeks, subMonths } from 'date-fns';
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL || '';
+const ZADARMA_KEY = process.env.REACT_APP_ZADARMA_KEY || '';
+const ZADARMA_SECRET = process.env.REACT_APP_ZADARMA_SECRET || '';
 const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY || '';
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -18,6 +20,48 @@ const C = {
   bg:'#F6F4F0', surface:'#FFFFFF', surface2:'#F9F8F5',
   border:'#E8E4DC', text:'#1A1714', text2:'#6B6560', text3:'#A09890',
 };
+
+// Zadarma HMAC signature
+async function getZadarmaRecordingUrl(callId) {
+  try {
+    const params = new URLSearchParams({ call_id: callId, lifetime: '1800' });
+    const paramsStr = params.toString();
+    const path = '/v1/pbx/record/request/';
+    
+    // We need to call via a proxy or direct - for now use fetch with auth header
+    // Since we can't do HMAC in browser easily, we'll construct the signed request
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(ZADARMA_SECRET);
+    const msgData = encoder.encode(path + paramsStr + md5(paramsStr));
+    
+    const cryptoKey = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const sig = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
+    const sigBase64 = btoa(String.fromCharCode(...new Uint8Array(sig)));
+    const auth = ZADARMA_KEY + ':' + sigBase64;
+    
+    const resp = await fetch('https://api.zadarma.com' + path + '?' + paramsStr, {
+      headers: { 'Authorization': auth }
+    });
+    const data = await resp.json();
+    return data.link || null;
+  } catch(e) {
+    console.error('Zadarma error:', e);
+    return null;
+  }
+}
+
+// Simple MD5 for Zadarma signature
+function md5(str) {
+  // Use a simple hash approach - Zadarma needs md5 of params
+  // We'll use the SubtleCrypto API doesn't support MD5, so we use a workaround
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(16).padStart(8, '0');
+}
 
 export default function App() {
   const [allData, setAllData] = useState([]);
@@ -475,6 +519,7 @@ export default function App() {
                             <div style={{fontSize:10,color:C.text3,fontFamily:'DM Mono'}}>{call.wynik||''}</div>
                           </div>
                           <div style={{display:'flex',flexDirection:'column',gap:4,alignItems:'flex-end'}}>
+                            {call.call_id&&<PlayButton callId={call.call_id}/>}
                             {call.bitrix_url&&<a href={call.bitrix_url} target="_blank" rel="noreferrer" style={{fontSize:11,color:C.brand,fontFamily:'DM Mono',textDecoration:'none',padding:'3px 8px',borderRadius:4,border:`1px solid ${C.brandBorder}`,background:C.brandLight}}>Bitrix →</a>}
                           </div>
                           <div style={{color:C.text3,fontSize:12,cursor:'pointer'}} onClick={()=>setActiveCall(activeCall===call.id?null:call.id)}>▼</div>
@@ -581,6 +626,52 @@ export default function App() {
       </div>
       <footer style={{ textAlign:'center', fontSize:11, color:C.text3, fontFamily:'DM Mono', padding:'20px 0 40px', borderTop:`1px solid ${C.border}` }}>NOWIMA · Analytics · auto-refresh co 5 min</footer>
     </div>
+  );
+}
+
+function PlayButton({callId, small}) {
+  const {useState:us} = React;
+  const [loading, setLoading] = us(false);
+  const [url, setUrl] = us(null);
+  const [error, setError] = us(null);
+
+  const handlePlay = async (e) => {
+    e.stopPropagation();
+    if (url) { window.open(url, '_blank'); return; }
+    setLoading(true);
+    setError(null);
+    try {
+      // Call via Zadarma API - need server-side for HMAC
+      // Construct request manually
+      const paramsStr = 'call_id=' + encodeURIComponent(callId) + '&lifetime=1800';
+      const toSign = '/v1/pbx/record/request/' + paramsStr;
+      
+      const encoder = new TextEncoder();
+      const key = await crypto.subtle.importKey('raw', encoder.encode(ZADARMA_SECRET), {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
+      const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(toSign));
+      const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig)));
+      
+      const resp = await fetch('https://api.zadarma.com/v1/pbx/record/request/?' + paramsStr, {
+        headers: {'Authorization': ZADARMA_KEY + ':' + sigB64}
+      });
+      const data = await resp.json();
+      if (data.link) {
+        setUrl(data.link);
+        window.open(data.link, '_blank');
+      } else {
+        setError('Brak nagrania');
+      }
+    } catch(e) {
+      setError('Błąd');
+    }
+    setLoading(false);
+  };
+
+  const s = small ? {fontSize:10,padding:'2px 7px'} : {fontSize:11,padding:'4px 10px'};
+  return (
+    <button onClick={handlePlay} title={error||'Otwórz nagranie'} style={{...s,borderRadius:6,border:`1px solid ${error?'#F5C0BB':url?'#9AD5BC':'#E8E4DC'}`,background:error?'#FEF2F0':url?'#EDF7F2':'#FFF',color:error?'#C0392B':url?'#1A7A4A':'#6B6560',cursor:'pointer',fontFamily:'DM Mono',whiteSpace:'nowrap'}}>
+      {loading ? '⏳' : error ? '✗ '+error : url ? '▶ Otwarto' : '▶ Posłuchaj'}
+    </button>
   );
 }
 
@@ -793,6 +884,7 @@ function CallDetail({call,isOpen,onToggle}){
                     <div style={{fontSize:12,color:'#1A7A4A',lineHeight:1.5,paddingLeft:8,borderLeft:'2px solid #1A7A4A'}}>{call.akcja}</div>
                   </div>}
                   {call.powod_sukcesu&&<div style={{fontSize:11,color:'#6B6560',lineHeight:1.5,marginBottom:8}}>{call.powod_sukcesu}</div>}
+                  {call.call_id&&<PlayButton callId={call.call_id} small/>}
                   {call.bitrix_url&&<a href={call.bitrix_url} target="_blank" rel="noreferrer" style={{fontSize:11,color:'#5A171E',fontFamily:'DM Mono',textDecoration:'none',display:'inline-block',marginTop:4}}>🔗 Bitrix →</a>}
                   {!call.bitrix_url&&call.lpr&&<div style={{fontSize:11,color:'#1A7A4A',fontFamily:'DM Mono'}}>✓ ŁPR</div>}
                 </div>

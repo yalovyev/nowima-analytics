@@ -63,14 +63,12 @@ function md5(str) {
   return Math.abs(hash).toString(16).padStart(8, '0');
 }
 
-const APP_PASSWORD = process.env.REACT_APP_PASSWORD || 'nowima2023';
+const APP_PASSWORD = process.env.REACT_APP_PASSWORD || 'nowima2024';
 
 function LoginScreen({onLogin}) {
-  const {useState:us} = React;
-  const [pwd, setPwd] = us('');
-  const [error, setError] = us(false);
-  const [show, setShow] = us(false);
-
+  const [pwd, setPwd] = React.useState('');
+  const [error, setError] = React.useState(false);
+  const [show, setShow] = React.useState(false);
   const handle = (e) => {
     e.preventDefault();
     if (pwd === APP_PASSWORD) {
@@ -82,7 +80,6 @@ function LoginScreen({onLogin}) {
       setTimeout(() => setError(false), 2000);
     }
   };
-
   return (
     <div style={{minHeight:'100vh',background:'#5A171E',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'DM Sans',sans-serif"}}>
       <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800&family=DM+Sans:wght@400;500&family=DM+Mono:wght@400&display=swap" rel="stylesheet"/>
@@ -95,23 +92,13 @@ function LoginScreen({onLogin}) {
           <div style={{marginBottom:16}}>
             <div style={{fontSize:11,fontFamily:'DM Mono',color:'#6B6560',marginBottom:6,textTransform:'uppercase',letterSpacing:'0.08em'}}>Hasło</div>
             <div style={{position:'relative'}}>
-              <input
-                type={show?'text':'password'}
-                value={pwd}
-                onChange={e=>setPwd(e.target.value)}
-                placeholder="Wpisz hasło..."
-                autoFocus
-                style={{width:'100%',padding:'12px 40px 12px 14px',borderRadius:8,border:`1px solid ${error?'#C0392B':'#E8E4DC'}`,fontSize:14,outline:'none',boxSizing:'border-box',fontFamily:'DM Sans',transition:'border-color 0.2s',background:error?'#FEF2F0':'#FFF'}}
-              />
-              <button type="button" onClick={()=>setShow(s=>!s)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:16,color:'#A09890'}}>
-                {show?'🙈':'👁'}
-              </button>
+              <input type={show?'text':'password'} value={pwd} onChange={e=>setPwd(e.target.value)} placeholder="Wpisz hasło..." autoFocus
+                style={{width:'100%',padding:'12px 40px 12px 14px',borderRadius:8,border:`1px solid ${error?'#C0392B':'#E8E4DC'}`,fontSize:14,outline:'none',boxSizing:'border-box',background:error?'#FEF2F0':'#FFF'}}/>
+              <button type="button" onClick={()=>setShow(s=>!s)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:16,color:'#A09890'}}>{show?'🙈':'👁'}</button>
             </div>
             {error && <div style={{fontSize:11,color:'#C0392B',marginTop:6,fontFamily:'DM Mono'}}>Nieprawidłowe hasło</div>}
           </div>
-          <button type="submit" style={{width:'100%',padding:'13px',borderRadius:8,background:'#5A171E',color:'#D1E925',border:'none',cursor:'pointer',fontFamily:'Outfit',fontWeight:700,fontSize:14,letterSpacing:1,transition:'opacity 0.2s'}}>
-            ZALOGUJ
-          </button>
+          <button type="submit" style={{width:'100%',padding:'13px',borderRadius:8,background:'#5A171E',color:'#D1E925',border:'none',cursor:'pointer',fontFamily:'Outfit',fontWeight:700,fontSize:14,letterSpacing:1}}>ZALOGUJ</button>
         </form>
       </div>
     </div>
@@ -120,8 +107,6 @@ function LoginScreen({onLogin}) {
 
 export default function App() {
   const [auth, setAuth] = React.useState(() => sessionStorage.getItem('nowima_auth') === '1');
-  if (!auth) return <LoginScreen onLogin={() => setAuth(true)} />;
-
   const [allData, setAllData] = useState([]);
   const [prevData, setPrevData] = useState([]);
   const [companies, setCompanies] = useState([]);
@@ -295,7 +280,7 @@ export default function App() {
   const periodLabel = { day:'Dziś', yesterday:'Wczoraj', week:'Tydzień', month:'Miesiąc', all:'Wszystko', custom:'Własny' };
 
   const stageColor = { 'Contract':C.green, 'Finalization':C.green, 'Offer':C.amber, 'Demand':C.blue, 'Rezerwa na przyszłość':C.text3 };
-
+  if (!auth) return <LoginScreen onLogin={() => setAuth(true)} />;
   return (
     <div style={{ fontFamily:"'DM Sans',sans-serif", background:C.bg, minHeight:'100vh', color:C.text }}>
       <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>

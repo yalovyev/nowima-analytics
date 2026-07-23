@@ -63,7 +63,7 @@ function md5(str) {
   return Math.abs(hash).toString(16).padStart(8, '0');
 }
 
-const APP_PASSWORD = process.env.REACT_APP_PASSWORD || 'nowima2024';
+const APP_PASSWORD = process.env.REACT_APP_PASSWORD || 'nowima2023';
 
 function LoginScreen({onLogin}) {
   const {useState:us} = React;

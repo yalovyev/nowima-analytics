@@ -358,7 +358,7 @@ export default function App() {
                       { label:'🎯 Z ŁPR', value: lprCalls.length, sub: pct(lprCalls.length, over60.length)+'% z 60s+', color: C.green },
                       { label:'📹 Prop. Zoom', value: zoomProposals.length, sub: pct(zoomProposals.length, lprCalls.length)+'% z ŁPR', color: C.blue },
                       { label:'🎥 Spotkania', value: meetings.length, sub: pct(meetings.length, zoomProposals.length)+'% z prop.', color: '#2B5BDB' },
-                      { label:'🔥 Gorące+Sukces', value: [...new Set([...hot.map(c=>c.id), ...phoneCalls.filter(c=>c.wynik==='sukces').map(c=>c.id)])].length, sub: pct([...new Set([...hot.map(c=>c.id), ...phoneCalls.filter(c=>c.wynik==='sukces').map(c=>c.id)])].length, lprCalls.length)+'% z ŁPR', color: C.red, good: true },
+                      { label:'📝 Kontrakty', value: phoneCalls.filter(c=>c.wynik==='kontrakt').length, sub: pct(phoneCalls.filter(c=>c.wynik==='kontrakt').length, lprCalls.length)+'% z ŁPR', color: C.green, good: true },
                     ].map((item, idx2) => (
                       <div key={idx2} style={{ textAlign:'center', padding:'12px 6px', background:C.surface2, borderRadius:10, borderTop:`3px solid ${item.color}`, position:'relative' }}>
                         {idx2 < 6 && <div style={{ position:'absolute', right:-10, top:'50%', transform:'translateY(-50%)', color:C.text3, fontSize:16, zIndex:1 }}>›</div>}

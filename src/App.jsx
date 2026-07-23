@@ -72,7 +72,7 @@ function LoginScreen({onLogin}) {
   const handle = (e) => {
     e.preventDefault();
     if (pwd === APP_PASSWORD) {
-      sessionStorage.setItem('nowima_auth', '1');
+      localStorage.setItem('nowima_auth', '1');
       onLogin();
     } else {
       setError(true);
@@ -106,7 +106,7 @@ function LoginScreen({onLogin}) {
 }
 
 export default function App() {
-  const [auth, setAuth] = React.useState(() => sessionStorage.getItem('nowima_auth') === '1');
+  const [auth, setAuth] = React.useState(() => localStorage.getItem('nowima_auth') === '1');
   const [allData, setAllData] = useState([]);
   const [prevData, setPrevData] = useState([]);
   const [companies, setCompanies] = useState([]);
@@ -255,6 +255,36 @@ export default function App() {
     return Object.entries(errors).filter(([,v]) => v > 1).sort((a,b)=>b[1]-a[1]).slice(0, 5);
   }, [phoneCalls]);
 
+  // Product knowledge
+  const productKnowledge = useMemo(() => {
+    const fields = [
+      {key:'znanie_elektryka', label:'Elektrycy'},
+      {key:'znanie_spawanie', label:'Spawacze'},
+      {key:'znanie_certyfikaty', label:'Certyfikaty'},
+      {key:'znanie_monterzy', label:'Monterzy'},
+    ];
+    return fields.map(f => {
+      const vals = phoneCalls.filter(c => c[f.key] != null && c[f.key] > 0).map(c => c[f.key]);
+      return { ...f, avg: vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*10)/10 : null, count: vals.length };
+    }).filter(f => f.avg != null);
+  }, [phoneCalls]);
+
+  // Top best practices
+  const topBest = useMemo(() => {
+    return [...phoneCalls]
+      .filter(c => c.ocena >= 4 && c.akcja && !['bot_niedozwon','operacyjny'].includes(c.typ_rozmowy))
+      .sort((a,b) => (b.ocena||0)-(a.ocena||0))
+      .slice(0,3);
+  }, [phoneCalls]);
+
+  // Top worst practices
+  const topWorst = useMemo(() => {
+    return [...phoneCalls]
+      .filter(c => c.ocena > 0 && c.ocena <= 2 && c.do_poprawy && !['bot_niedozwon','operacyjny'].includes(c.typ_rozmowy))
+      .sort((a,b) => (a.ocena||0)-(b.ocena||0))
+      .slice(0,3);
+  }, [phoneCalls]);
+
   const exportOnboardingCSV = () => {
     const h = ['#','Data','Menedżer','Klient','%','Typ','Wynik','Akcja','Do poprawy','Bitrix'];
     const rows = onboardingCalls.map((c,i) => [
@@ -383,7 +413,7 @@ export default function App() {
             {view === 'calls' && (
               <>
                 {/* KPI row */}
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12, marginBottom:24 }}>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12, marginBottom:16 }}>
                   <KpiCard label="Wszystkie rozmowy" value={phoneCalls.length} accent={C.brand} sub={`${bots.length} botów/niedozwon`}/>
                   <KpiCard label="Powyżej 60s" value={over60.length} accent={C.amber} sub={`${phoneCalls.length > 0 ? Math.round(over60.length/phoneCalls.length*100) : 0}% wszystkich`}/>
                   <KpiCard label="Z ŁPR" value={lprCalls.length} good accent={C.green} sub={`${over60.length > 0 ? Math.round(lprCalls.length/over60.length*100) : 0}% z rozmów 60s+`}/>
@@ -396,6 +426,81 @@ export default function App() {
                   <MgrSummary name="Beata Janoszka" calls={beataPhone} color={C.beata}/>
                   <MgrSummary name="Kamil Wisniewski" calls={kamilPhone} color={C.kamil}/>
                 </div>
+
+                {/* KPI row 2 - video */}
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:24 }}>
+                  <KpiCard label="Spotkania wideo" value={meetings.length} accent="#2B5BDB" sub={meetings.length>0?`${meetings.filter(m=>m.sukces_poziom==='sukces').length} sukces`:'brak spotkań'}/>
+                  <KpiCard label="Propozycje Zoom" value={phoneCalls.filter(c=>c.checklist_zoom||c.zaproponowal_spotkanie_wideo).length} accent="#7B5EA7" sub={`${over60.length>0?Math.round(phoneCalls.filter(c=>c.checklist_zoom||c.zaproponowal_spotkanie_wideo).length/over60.length*100):0}% rozmów 60s+`}/>
+                  <KpiCard label="Follow-upy" value={phoneCalls.filter(c=>['followup_po_materialach','followup_bez_materialow'].includes(c.typ_rozmowy)).length} accent={C.amber} sub="rozmów follow-up"/>
+                  <KpiCard label="Sukces wg kryteriów" value={phoneCalls.filter(c=>c.sukces_wg_kryteriow).length} good accent={C.green} sub={`${over60.length>0?Math.round(phoneCalls.filter(c=>c.sukces_wg_kryteriow).length/over60.length*100):0}% z rozmów 60s+`}/>
+                </div>
+
+                {/* Product knowledge */}
+                {productKnowledge.length > 0 && (
+                  <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:'16px 20px', marginBottom:24 }}>
+                    <div style={{ fontFamily:'Outfit', fontWeight:700, fontSize:12, textTransform:'uppercase', letterSpacing:'0.1em', color:C.brand, marginBottom:12 }}>📚 Znajomość produktu</div>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
+                      {productKnowledge.map(f => (
+                        <div key={f.key} style={{textAlign:'center',padding:'10px',background:C.surface2,borderRadius:8}}>
+                          <div style={{fontFamily:'Outfit',fontWeight:700,fontSize:22,color:f.avg>=7?C.green:f.avg>=5?C.amber:C.red}}>{f.avg}/10</div>
+                          <div style={{fontSize:10,color:C.text3,fontFamily:'DM Mono',marginTop:2}}>{f.label}</div>
+                          <div style={{fontSize:9,color:C.text3,fontFamily:'DM Mono'}}>({f.count} ocen)</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Top best */}
+                {topBest.length > 0 && (
+                  <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, marginBottom:24, overflow:'hidden' }}>
+                    <div style={{ padding:'14px 20px', borderBottom:`1px solid ${C.border}` }}>
+                      <span style={{ fontFamily:'Outfit', fontWeight:700, fontSize:12, textTransform:'uppercase', letterSpacing:'0.1em', color:C.green }}>⭐ Najlepsze praktyki okresu</span>
+                    </div>
+                    {topBest.map((c,i) => {
+                      const mgr2=c.sip==='123'||c.manager==='Beata Janoszka'?'Beata':'Kamil';
+                      return(
+                        <div key={c.id} style={{display:'flex',alignItems:'flex-start',gap:12,padding:'12px 20px',borderBottom:`1px solid ${C.border}`}}>
+                          <div style={{fontFamily:'Outfit',fontWeight:800,fontSize:16,color:C.green,minWidth:20}}>{i+1}</div>
+                          <div style={{flex:1}}>
+                            <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:4}}>
+                              <span style={{fontSize:12,fontWeight:600}}>{c.klient||'—'}</span>
+                              <span style={{fontSize:10,color:c.sip==='123'?C.beata:C.kamil,fontFamily:'DM Mono'}}>{mgr2}</span>
+                              <span style={{fontSize:10,color:C.text3,fontFamily:'DM Mono'}}>{c.call_time?format(parseISO(c.call_time),'dd.MM HH:mm'):''}</span>
+                            </div>
+                            {c.akcja&&<div style={{fontSize:12,color:C.green,lineHeight:1.4}}>→ {c.akcja}</div>}
+                          </div>
+                          <div style={{color:C.green,fontSize:12}}>{'⭐'.repeat(c.ocena||0)}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Top worst */}
+                {topWorst.length > 0 && (
+                  <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, marginBottom:24, overflow:'hidden' }}>
+                    <div style={{ padding:'14px 20px', borderBottom:`1px solid ${C.border}` }}>
+                      <span style={{ fontFamily:'Outfit', fontWeight:700, fontSize:12, textTransform:'uppercase', letterSpacing:'0.1em', color:C.red }}>📉 Najgorsze praktyki — do poprawy</span>
+                    </div>
+                    {topWorst.map((c,i) => {
+                      const mgr2=c.sip==='123'||c.manager==='Beata Janoszka'?'Beata':'Kamil';
+                      return(
+                        <div key={c.id} style={{display:'flex',alignItems:'flex-start',gap:12,padding:'12px 20px',borderBottom:`1px solid ${C.border}`}}>
+                          <div style={{fontFamily:'Outfit',fontWeight:800,fontSize:16,color:C.red,minWidth:20}}>{i+1}</div>
+                          <div style={{flex:1}}>
+                            <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:4}}>
+                              <span style={{fontSize:12,fontWeight:600}}>{c.klient||'—'}</span>
+                              <span style={{fontSize:10,color:c.sip==='123'?C.beata:C.kamil,fontFamily:'DM Mono'}}>{mgr2}</span>
+                            </div>
+                            {c.do_poprawy&&<div style={{fontSize:12,color:C.red,lineHeight:1.4,marginBottom:4}}>❌ {c.do_poprawy}</div>}
+                            {c.akcja&&<div style={{fontSize:12,color:C.amber,lineHeight:1.4}}>→ {c.akcja}</div>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {/* Type breakdown */}
                 {typStats.length > 0 && (

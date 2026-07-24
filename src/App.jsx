@@ -196,8 +196,8 @@ export default function App() {
   const avgPct = (arr) => { const v = arr.filter(c => c.wynik_procentowy != null).map(c => c.wynik_procentowy); return v.length ? Math.round(v.reduce((a,b)=>a+b,0)/v.length) : null; };
 
   const typStats = useMemo(() => {
-    const types = ['zimny_telefon','sekretariat','kontakt_z_lpr','followup_po_materialach','followup_bez_materialow'];
-    const labels = { zimny_telefon:'❄️ Zimny', sekretariat:'📋 Sekretariat', kontakt_z_lpr:'🎯 Z ŁPR', followup_po_materialach:'📨 Follow-up z mat.', followup_bez_materialow:'🔄 Follow-up' };
+    const types = ['zimny_telefon','sekretariat','kontakt_z_lpr','followup_po_materialach','followup_bez_materialow','operacyjny','bot_niedozwon'];
+    const labels = { zimny_telefon:'❄️ Zimny', sekretariat:'📋 Sekretariat', kontakt_z_lpr:'🎯 Z ŁPR', followup_po_materialach:'📨 Follow-up z mat.', followup_bez_materialow:'🔄 Follow-up', operacyjny:'⚙️ Operacyjny', bot_niedozwon:'🤖 Bot/niedozwon' };
     return types.map(typ => {
       const arr = phoneCalls.filter(c => c.typ_rozmowy === typ);
       const sukces = arr.filter(c => c.sukces_wg_kryteriow).length;

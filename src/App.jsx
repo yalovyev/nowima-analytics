@@ -431,6 +431,87 @@ export default function App() {
                   </div>
                 )}
 
+                {/* Quality block */}
+                <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, marginBottom:24, overflow:'hidden' }}>
+                  <div style={{ padding:'14px 20px', borderBottom:`1px solid ${C.border}` }}>
+                    <span style={{ fontFamily:'Outfit', fontWeight:700, fontSize:12, textTransform:'uppercase', letterSpacing:'0.1em', color:C.brand }}>⭐ Jakość rozmów</span>
+                  </div>
+                  <div style={{ padding:'16px 20px' }}>
+                    {/* Overall + by manager */}
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12, marginBottom:16 }}>
+                      {[
+                        { label:'Ogólna śr. ocena', value: avgPct(phoneCalls), color: C.brand },
+                        { label:'Beata — śr. ocena', value: avgPct(beataPhone), color: C.beata },
+                        { label:'Kamil — śr. ocena', value: avgPct(kamilPhone), color: C.kamil },
+                      ].map((s,i) => (
+                        <div key={i} style={{ textAlign:'center', padding:'12px', background:C.surface2, borderRadius:10, borderTop:`3px solid ${s.color}` }}>
+                          <div style={{ fontFamily:'Outfit', fontWeight:800, fontSize:28, color:s.value!=null?(s.value>=70?C.green:s.value>=40?C.amber:C.red):C.text3 }}>
+                            {s.value != null ? s.value+'%' : '—'}
+                          </div>
+                          <div style={{ fontSize:10, color:C.text3, fontFamily:'DM Mono', marginTop:4 }}>{s.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {/* By call type */}
+                    <div style={{ marginBottom:16 }}>
+                      <div style={{ fontSize:10, fontFamily:'DM Mono', color:C.text3, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>Wg typu rozmowy</div>
+                      <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                        {typStats.filter(t=>t.avg!=null).map(t => (
+                          <div key={t.typ} style={{ display:'flex', alignItems:'center', gap:10 }}>
+                            <div style={{ fontSize:11, color:C.text2, minWidth:160 }}>{t.label}</div>
+                            <div style={{ flex:1, background:C.surface2, borderRadius:20, height:8, overflow:'hidden' }}>
+                              <div style={{ width:`${t.avg}%`, height:'100%', background:t.avg>=70?C.green:t.avg>=40?C.amber:C.red, borderRadius:20, transition:'width 0.5s' }}/>
+                            </div>
+                            <div style={{ fontFamily:'DM Mono', fontWeight:600, fontSize:12, color:t.avg>=70?C.green:t.avg>=40?C.amber:C.red, minWidth:36, textAlign:'right' }}>{t.avg}%</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Product knowledge */}
+                    {(() => {
+                      const fields = [{key:'znanie_elektryka',label:'⚡ Elektrycy'},{key:'znanie_spawanie',label:'🔥 Spawacze'},{key:'znanie_certyfikaty',label:'📋 Certyfikaty'},{key:'znanie_monterzy',label:'🔩 Monterzy'}];
+                      const pk = fields.map(f => { const vals = phoneCalls.filter(c=>c[f.key]!=null&&c[f.key]>0).map(c=>c[f.key]); return {...f, avg: vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*10)/10:null, count:vals.length}; }).filter(f=>f.avg!=null);
+                      if (!pk.length) return null;
+                      return (
+                        <div style={{ marginBottom:16 }}>
+                          <div style={{ fontSize:10, fontFamily:'DM Mono', color:C.text3, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>Znajomość produktu (1–10)</div>
+                          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                            {pk.map(f => (
+                              <div key={f.key} style={{ display:'flex', alignItems:'center', gap:10 }}>
+                                <div style={{ fontSize:11, color:C.text2, minWidth:160 }}>{f.label}</div>
+                                <div style={{ flex:1, background:C.surface2, borderRadius:20, height:8, overflow:'hidden' }}>
+                                  <div style={{ width:`${f.avg*10}%`, height:'100%', background:f.avg>=7?C.green:f.avg>=5?C.amber:C.red, borderRadius:20 }}/>
+                                </div>
+                                <div style={{ fontFamily:'DM Mono', fontWeight:600, fontSize:12, color:f.avg>=7?C.green:f.avg>=5?C.amber:C.red, minWidth:36, textAlign:'right' }}>{f.avg}/10</div>
+                                <div style={{ fontSize:9, color:C.text3, fontFamily:'DM Mono', minWidth:50 }}>({f.count} ocen)</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    {/* Video meetings quality */}
+                    {meetings.length > 0 && (
+                      <div>
+                        <div style={{ fontSize:10, fontFamily:'DM Mono', color:C.text3, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>Jakość spotkań wideo</div>
+                        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
+                          {[
+                            { label:'Spotkań', value: meetings.length, color: C.blue },
+                            { label:'Sukces', value: meetings.filter(m=>m.sukces_poziom==='sukces').length, color: C.green },
+                            { label:'Częściowy', value: meetings.filter(m=>m.sukces_poziom==='czesciowy').length, color: C.amber },
+                            { label:'Śr. ocena', value: avgPct(meetings) != null ? avgPct(meetings)+'%' : '—', color: C.blue },
+                          ].map((s,i) => (
+                            <div key={i} style={{ textAlign:'center', padding:'10px', background:C.surface2, borderRadius:8 }}>
+                              <div style={{ fontFamily:'Outfit', fontWeight:700, fontSize:20, color:s.color }}>{s.value}</div>
+                              <div style={{ fontSize:10, color:C.text3, fontFamily:'DM Mono', marginTop:2 }}>{s.label}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Repeated errors */}
                 {repeatedErrors.length > 0 && (
                   <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, marginBottom:24, overflow:'hidden' }}>

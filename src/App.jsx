@@ -908,15 +908,9 @@ function PlayButton({callId, small}) {
       const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(toSign));
       const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig)));
       
-      const apiUrl = 'https://api.zadarma.com/v1/pbx/record/request/?' + paramsStr;
-      let data = null;
-      try {
-        const r = await fetch(apiUrl, { headers: {'Authorization': ZADARMA_KEY + ':' + sigB64} });
-        data = await r.json();
-      } catch(corsErr) {
-        const r2 = await fetch('https://corsproxy.io/?' + encodeURIComponent(apiUrl), { headers: {'Authorization': ZADARMA_KEY + ':' + sigB64} });
-        data = await r2.json();
-      }
+      // Use Vercel API route as proxy (avoids CORS)
+      const r = await fetch('/api/zadarma-record?call_id=' + encodeURIComponent(callId));
+      const data = await r.json();
       if (data && data.link) {
         setUrl(data.link);
         window.open(data.link, '_blank');
@@ -924,7 +918,7 @@ function PlayButton({callId, small}) {
         setError('Brak nagrania');
       }
     } catch(e) {
-      setError('CORS');
+      setError('Błąd');
     }
     setLoading(false);
   };

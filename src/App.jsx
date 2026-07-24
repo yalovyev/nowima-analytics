@@ -766,6 +766,90 @@ export default function App() {
   );
 }
 
+function TranslateButton({text, lang}) {
+  const handle = async () => {
+    const encoded = encodeURIComponent(text.substring(0, 3000));
+    const tl = lang === 'pl' ? 'pl' : 'ru';
+    window.open(`https://translate.google.com/?sl=auto&tl=${tl}&text=${encoded}&op=translate`, '_blank');
+  };
+  return (
+    <button onClick={handle} style={{fontSize:10,padding:'3px 8px',borderRadius:5,border:'1px solid #E8E4DC',background:'#FFF',color:'#6B6560',cursor:'pointer',fontFamily:'DM Mono',whiteSpace:'nowrap'}}>
+      🌐 {lang === 'pl' ? 'PL' : 'RU'}
+    </button>
+  );
+}
+
+function TopCallsBlock({phoneCalls, type, C, format, parseISO}) {
+  const {useState:us} = React;
+  const [openId, setOpenId] = us(null);
+  const isGood = type === 'best';
+  const calls = isGood
+    ? [...phoneCalls].filter(c=>c.ocena>=4&&c.akcja&&!['bot_niedozwon','operacyjny'].includes(c.typ_rozmowy)).sort((a,b)=>(b.ocena||0)-(a.ocena||0)).slice(0,5)
+    : [...phoneCalls].filter(c=>c.ocena>0&&c.ocena<=2&&c.do_poprawy&&!['bot_niedozwon','operacyjny'].includes(c.typ_rozmowy)).sort((a,b)=>(a.ocena||0)-(b.ocena||0)).slice(0,5);
+  if (!calls.length) return null;
+  return (
+    <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, marginBottom:24, overflow:'hidden' }}>
+      <div style={{ padding:'14px 20px', borderBottom:`1px solid ${C.border}`, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <span style={{ fontFamily:'Outfit', fontWeight:700, fontSize:12, textTransform:'uppercase', letterSpacing:'0.1em', color:isGood?C.green:C.red }}>
+          {isGood ? '⭐ TOP + Najlepsze rozmowy' : '📉 TOP — Najgorsze rozmowy'}
+        </span>
+        <span style={{ fontSize:10, color:C.text3, fontFamily:'DM Mono' }}>{calls.length} rozmów · kliknij aby rozwinąć</span>
+      </div>
+      {calls.map((c,i) => {
+        const m2 = c.sip==='123'||c.manager==='Beata Janoszka'?'Beata':'Kamil';
+        const isOpen = openId === c.id;
+        const transcript = c.dialog || c.transcript || '';
+        return (
+          <div key={c.id} style={{ borderBottom:`1px solid ${C.border}` }}>
+            {/* Header row */}
+            <div onClick={()=>setOpenId(isOpen?null:c.id)} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 20px', cursor:'pointer', background:isOpen?C.surface2:C.surface }}>
+              <div style={{ fontFamily:'Outfit', fontWeight:800, fontSize:16, color:isGood?C.green:C.red, minWidth:24 }}>{i+1}</div>
+              <div style={{ flex:1 }}>
+                <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:3, flexWrap:'wrap' }}>
+                  <span style={{ fontSize:13, fontWeight:600 }}>{c.klient||'—'}</span>
+                  <span style={{ fontSize:10, color:c.sip==='123'?C.beata:C.kamil, fontFamily:'DM Mono', fontWeight:600 }}>{m2}</span>
+                  <span style={{ fontSize:10, color:C.text3, fontFamily:'DM Mono' }}>{c.call_time?format(parseISO(c.call_time),'dd.MM HH:mm'):''}</span>
+                  <span style={{ fontSize:10, color:C.text3, fontFamily:'DM Mono' }}>{c.typ_rozmowy?.replace(/_/g,' ')}</span>
+                  {c.ocena && <span style={{ color:isGood?C.green:C.red, fontSize:10 }}>{'⭐'.repeat(c.ocena)}</span>}
+                </div>
+                {isGood && c.akcja && <div style={{ fontSize:12, color:C.green, lineHeight:1.4 }}>→ {c.akcja}</div>}
+                {!isGood && c.do_poprawy && <div style={{ fontSize:12, color:C.red, lineHeight:1.4 }}>❌ {c.do_poprawy}</div>}
+              </div>
+              <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                {c.call_id && <PlayButton callId={c.call_id} small/>}
+                <span style={{ color:C.text3, fontSize:11, transition:'transform 0.2s', transform:isOpen?'rotate(180deg)':'none' }}>▼</span>
+              </div>
+            </div>
+            {/* Expanded transcript */}
+            {isOpen && (
+              <div style={{ padding:'16px 20px', background:C.surface2, borderTop:`1px solid ${C.border}` }}>
+                {c.cytat_klienta && <div style={{ fontSize:12, color:C.text2, fontStyle:'italic', marginBottom:10, padding:'8px 12px', background:C.surface, borderRadius:8, borderLeft:`3px solid ${C.blue}` }}>💬 "{c.cytat_klienta}"</div>}
+                {c.obiekcja && <div style={{ fontSize:12, color:C.red, marginBottom:8 }}>🛑 {c.obiekcja}</div>}
+                {!isGood && c.akcja && <div style={{ fontSize:12, color:C.amber, marginBottom:8 }}>💡 Co zrobić inaczej: {c.akcja}</div>}
+                {c.powod_sukcesu && <div style={{ fontSize:12, color:C.text2, marginBottom:8, lineHeight:1.5 }}>{c.powod_sukcesu}</div>}
+                {transcript && (
+                  <div>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+                      <div style={{ fontSize:10, fontFamily:'DM Mono', textTransform:'uppercase', color:C.text3 }}>Transkrypt</div>
+                      <div style={{ display:'flex', gap:6 }}>
+                        <TranslateButton text={transcript} lang="pl"/>
+                        <TranslateButton text={transcript} lang="ru"/>
+                      </div>
+                    </div>
+                    <div style={{ fontSize:11, color:C.text2, lineHeight:1.8, background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:'12px 16px', maxHeight:220, overflowY:'auto', fontFamily:'DM Mono', whiteSpace:'pre-wrap' }}>
+                      {transcript.substring(0, 800)}{transcript.length > 800 ? '...' : ''}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function PlayButton({callId, small}) {
   const {useState:us} = React;
   const [loading, setLoading] = us(false);

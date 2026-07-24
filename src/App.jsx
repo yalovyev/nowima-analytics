@@ -146,10 +146,6 @@ export default function App() {
   const hot = useMemo(() => calls.filter(c => c.wynik === 'gorący lead'), [calls]);
   const pilne = useMemo(() => calls.filter(c => c.pilne), [calls]);
   const bots = useMemo(() => phoneCalls.filter(c => c.typ_rozmowy === 'bot_niedozwon' || c.wynik === 'bot/automat'), [phoneCalls]);
-  const incoming = useMemo(() => phoneCalls.filter(c => c.kanal === 'przychodzący'), [phoneCalls]);
-  const zoomProposals = useMemo(() => phoneCalls.filter(c => c.checklist_zoom || c.zaproponowal_spotkanie_wideo), [phoneCalls]);
-  const sukcesCount = useMemo(() => phoneCalls.filter(c => c.wynik === 'sukces' || c.sukces_wg_kryteriow), [phoneCalls]);
-  const pct = (a, b) => b > 0 ? Math.round(a/b*100) : 0;
 
   // Filtered list for call view
   const filtered = useMemo(() => {
@@ -352,201 +348,32 @@ export default function App() {
                   <KpiCard label="Śr. ocena" value={avgPct(phoneCalls) != null ? avgPct(phoneCalls)+'%' : '—'} accent={C.blue} sub="wynik procentowy"/>
                 </div>
 
-{/* FUNNEL */}
-                <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, padding:'20px 24px', marginBottom:24 }}>
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-                    <span style={{ fontFamily:'Outfit', fontWeight:700, fontSize:12, textTransform:'uppercase', letterSpacing:'0.1em', color:C.brand }}>📊 Lejek sprzedażowy</span>
-                    <span style={{ fontSize:11, color:C.text3, fontFamily:'DM Mono' }}>śr. ocena: {avgPct(phoneCalls) != null ? avgPct(phoneCalls)+'%' : '—'}</span>
-                  </div>
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(8,1fr)', gap:8 }}>
-                    {[
-                      { label:'📤 Wychodzące', value: phoneCalls.length - incoming.length, sub: null, color: C.brand },
-                      { label:'📥 Przychodzące', value: incoming.length, sub: null, color: '#7B5EA7' },
-                      { label:'⏱ Pow. 60s', value: over60.length, sub: pct(over60.length, phoneCalls.length)+'%', color: C.amber },
-                      { label:'🎯 Z ŁPR', value: lprCalls.length, sub: pct(lprCalls.length, over60.length)+'% z 60s+', color: C.green },
-                      { label:'📹 Prop. Zoom', value: zoomProposals.length, sub: pct(zoomProposals.length, lprCalls.length)+'% z ŁPR', color: C.blue },
-                      { label:'🎥 Spotkania', value: meetings.length, sub: pct(meetings.length, zoomProposals.length)+'% z prop.', color: '#2B5BDB' },
-      { label:'🔥 Gorące leady', value: hot.length, sub: pct(hot.length, lprCalls.length)+'% z ŁPR', color: C.red },
-                      { label:'📝 Kontrakty', value: phoneCalls.filter(c=>c.wynik==='kontrakt').length, sub: pct(phoneCalls.filter(c=>c.wynik==='kontrakt').length, lprCalls.length)+'% z ŁPR', color: C.green, good: true },
-                    ].map((item, idx2) => (
-                      <div key={idx2} style={{ textAlign:'center', padding:'12px 6px', background:C.surface2, borderRadius:10, borderTop:`3px solid ${item.color}`, position:'relative' }}>
-                        {idx2 < 7 && <div style={{ position:'absolute', right:-10, top:'50%', transform:'translateY(-50%)', color:C.text3, fontSize:16, zIndex:1 }}>›</div>}
-                        <div style={{ fontSize:9, fontFamily:'DM Mono', color:C.text3, marginBottom:6, textTransform:'uppercase', letterSpacing:'0.05em', lineHeight:1.3 }}>{item.label}</div>
-                        <div style={{ fontFamily:'Outfit', fontWeight:800, fontSize:26, color:item.good?C.green:item.color, lineHeight:1 }}>{item.value}</div>
-                        {item.sub && <div style={{ fontSize:10, color:C.text3, fontFamily:'DM Mono', marginTop:4 }}>{item.sub}</div>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                
                 {/* Manager comparison */}
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:24 }}>
                   <MgrSummary name="Beata Janoszka" calls={beataPhone} color={C.beata}/>
                   <MgrSummary name="Kamil Wisniewski" calls={kamilPhone} color={C.kamil}/>
                 </div>
 
-                {/* Type breakdown with donut chart */}
+                {/* Type breakdown */}
                 {typStats.length > 0 && (
                   <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, overflow:'hidden', marginBottom:24 }}>
-                    <div style={{ padding:'14px 20px', borderBottom:`1px solid ${C.border}` }}>
-                      <span style={{ fontFamily:'Outfit', fontWeight:700, fontSize:12, textTransform:'uppercase', letterSpacing:'0.1em', color:C.brand }}>📊 Struktura rozmów</span>
+                    <div style={{ padding:'14px 20px', borderBottom:`1px solid ${C.border}`, display:'flex', alignItems:'center', gap:8 }}>
+                      <span style={{ fontFamily:'Outfit', fontWeight:700, fontSize:12, textTransform:'uppercase', letterSpacing:'0.1em', color:C.brand }}>Wg typu rozmowy</span>
                     </div>
-                    <div style={{ display:'grid', gridTemplateColumns:'200px 1fr', gap:0 }}>
-                      {/* Donut chart */}
-                      {(() => {
-                        const colors = [C.brand, C.amber, C.green, C.blue, '#7B5EA7'];
-                        const total = typStats.reduce((s,t)=>s+t.total,0);
-                        let cumAngle = -90;
-                        const slices = typStats.map((t,i) => {
-                          const angle = (t.total/total)*360;
-                          const startAngle = cumAngle;
-                          cumAngle += angle;
-                          const toRad = a => (a * Math.PI) / 180;
-                          const x1 = 80 + 60*Math.cos(toRad(startAngle));
-                          const y1 = 80 + 60*Math.sin(toRad(startAngle));
-                          const x2 = 80 + 60*Math.cos(toRad(startAngle+angle));
-                          const y2 = 80 + 60*Math.sin(toRad(startAngle+angle));
-                          const large = angle > 180 ? 1 : 0;
-                          return { ...t, color: colors[i%colors.length], x1, y1, x2, y2, large, angle };
-                        });
-                        return (
-                          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'20px', borderRight:`1px solid ${C.border}` }}>
-                            <svg viewBox="0 0 160 160" width="160" height="160">
-                              {slices.map((s,i) => s.angle > 0 && (
-                                <path key={i}
-                                  d={`M 80 80 L ${s.x1} ${s.y1} A 60 60 0 ${s.large} 1 ${s.x2} ${s.y2} Z`}
-                                  fill={s.color} opacity={0.9}
-                                  stroke="white" strokeWidth="2"
-                                />
-                              ))}
-                              <circle cx="80" cy="80" r="35" fill="white"/>
-                              <text x="80" y="76" textAnchor="middle" fontSize="14" fontFamily="Outfit" fontWeight="700" fill="#1A1714">{total}</text>
-                              <text x="80" y="90" textAnchor="middle" fontSize="9" fontFamily="DM Mono" fill="#A09890">ŁĄCZNIE</text>
-                            </svg>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))' }}>
+                      {typStats.map((t,i) => (
+                        <div key={t.typ} style={{ padding:'16px 20px', borderRight:i<typStats.length-1?`1px solid ${C.border}`:'none' }}>
+                          <div style={{ fontSize:11, fontFamily:'DM Mono', color:C.text3, marginBottom:6 }}>{t.label}</div>
+                          <div style={{ fontFamily:'Outfit', fontWeight:700, fontSize:28, color:C.text, lineHeight:1 }}>{t.total}</div>
+                          <div style={{ display:'flex', gap:8, marginTop:6, alignItems:'center' }}>
+                            <span style={{ fontSize:10, fontFamily:'DM Mono', color:C.green }}>✓ {t.sukces}</span>
+                            {t.avg != null && <span style={{ fontSize:10, fontFamily:'DM Mono', color:C.text3 }}>śr. {t.avg}%</span>}
                           </div>
-                        );
-                      })()}
-                      {/* Table */}
-                      <div>
-                        <div style={{ display:'grid', gridTemplateColumns:'1fr auto auto auto', gap:0, padding:'0 8px' }}>
-                          <div style={{ padding:'10px 12px', fontSize:9, fontFamily:'DM Mono', color:C.text3, textTransform:'uppercase', borderBottom:`1px solid ${C.border}` }}>Typ</div>
-                          <div style={{ padding:'10px 12px', fontSize:9, fontFamily:'DM Mono', color:C.text3, textTransform:'uppercase', textAlign:'center', borderBottom:`1px solid ${C.border}` }}>Szt.</div>
-                          <div style={{ padding:'10px 12px', fontSize:9, fontFamily:'DM Mono', color:C.text3, textTransform:'uppercase', textAlign:'center', borderBottom:`1px solid ${C.border}` }}>Sukces</div>
-                          <div style={{ padding:'10px 12px', fontSize:9, fontFamily:'DM Mono', color:C.text3, textTransform:'uppercase', textAlign:'center', borderBottom:`1px solid ${C.border}` }}>Śr.%</div>
-                        </div>
-                        {(() => {
-                          const colors = [C.brand, C.amber, C.green, C.blue, '#7B5EA7'];
-                          const total = typStats.reduce((s,t)=>s+t.total,0);
-                          return typStats.map((t,i) => (
-                            <div key={t.typ} style={{ display:'grid', gridTemplateColumns:'1fr auto auto auto', gap:0, padding:'0 8px', borderBottom:`1px solid ${C.border}` }}>
-                              <div style={{ padding:'10px 12px', display:'flex', alignItems:'center', gap:8 }}>
-                                <div style={{ width:8, height:8, borderRadius:2, background:colors[i%colors.length], flexShrink:0 }}/>
-                                <span style={{ fontSize:12, color:C.text }}>{t.label}</span>
-                              </div>
-                              <div style={{ padding:'10px 12px', textAlign:'center' }}>
-                                <span style={{ fontFamily:'Outfit', fontWeight:700, fontSize:16, color:C.text }}>{t.total}</span>
-                                <span style={{ fontSize:9, color:C.text3, fontFamily:'DM Mono', display:'block' }}>{Math.round(t.total/total*100)}%</span>
-                              </div>
-                              <div style={{ padding:'10px 12px', textAlign:'center' }}>
-                                <span style={{ fontFamily:'DM Mono', fontSize:12, color:t.sukces>0?C.green:C.text3 }}>✓ {t.sukces}</span>
-                                {t.sukces > 0 && <span style={{ fontSize:9, color:C.text3, fontFamily:'DM Mono', display:'block' }}>{Math.round(t.sukces/t.total*100)}%</span>}
-                              </div>
-                              <div style={{ padding:'10px 12px', textAlign:'center' }}>
-                                {t.avg != null && <span style={{ fontFamily:'DM Mono', fontSize:12, color:t.avg>=70?C.green:t.avg>=40?C.amber:C.red }}>{t.avg}%</span>}
-                              </div>
-                            </div>
-                          ));
-                        })()}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Quality block */}
-                <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, marginBottom:24, overflow:'hidden' }}>
-                  <div style={{ padding:'14px 20px', borderBottom:`1px solid ${C.border}` }}>
-                    <span style={{ fontFamily:'Outfit', fontWeight:700, fontSize:12, textTransform:'uppercase', letterSpacing:'0.1em', color:C.brand }}>⭐ Jakość rozmów</span>
-                  </div>
-                  <div style={{ padding:'16px 20px' }}>
-                    {/* Overall + by manager */}
-                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12, marginBottom:16 }}>
-                      {[
-                        { label:'Ogólna śr. ocena', value: avgPct(phoneCalls), color: C.brand },
-                        { label:'Beata — śr. ocena', value: avgPct(beataPhone), color: C.beata },
-                        { label:'Kamil — śr. ocena', value: avgPct(kamilPhone), color: C.kamil },
-                      ].map((s,i) => (
-                        <div key={i} style={{ textAlign:'center', padding:'12px', background:C.surface2, borderRadius:10, borderTop:`3px solid ${s.color}` }}>
-                          <div style={{ fontFamily:'Outfit', fontWeight:800, fontSize:28, color:s.value!=null?(s.value>=70?C.green:s.value>=40?C.amber:C.red):C.text3 }}>
-                            {s.value != null ? s.value+'%' : '—'}
-                          </div>
-                          <div style={{ fontSize:10, color:C.text3, fontFamily:'DM Mono', marginTop:4 }}>{s.label}</div>
                         </div>
                       ))}
                     </div>
-                    {/* By call type */}
-                    <div style={{ marginBottom:16 }}>
-                      <div style={{ fontSize:10, fontFamily:'DM Mono', color:C.text3, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>Wg typu rozmowy</div>
-                      <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                        {typStats.filter(t=>t.avg!=null).map(t => (
-                          <div key={t.typ} style={{ display:'flex', alignItems:'center', gap:10 }}>
-                            <div style={{ fontSize:11, color:C.text2, minWidth:160 }}>{t.label}</div>
-                            <div style={{ flex:1, background:C.surface2, borderRadius:20, height:8, overflow:'hidden' }}>
-                              <div style={{ width:`${t.avg}%`, height:'100%', background:t.avg>=70?C.green:t.avg>=40?C.amber:C.red, borderRadius:20, transition:'width 0.5s' }}/>
-                            </div>
-                            <div style={{ fontFamily:'DM Mono', fontWeight:600, fontSize:12, color:t.avg>=70?C.green:t.avg>=40?C.amber:C.red, minWidth:36, textAlign:'right' }}>{t.avg}%</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    {/* Product knowledge */}
-                    {(() => {
-                      const fields = [{key:'znanie_elektryka',label:'⚡ Elektrycy'},{key:'znanie_spawanie',label:'🔥 Spawacze'},{key:'znanie_certyfikaty',label:'📋 Certyfikaty'},{key:'znanie_monterzy',label:'🔩 Monterzy'}];
-                      const pk = fields.map(f => { const vals = phoneCalls.filter(c=>c[f.key]!=null&&c[f.key]>0).map(c=>c[f.key]); return {...f, avg: vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*10)/10:null, count:vals.length}; }).filter(f=>f.avg!=null);
-                      if (!pk.length) return null;
-                      return (
-                        <div style={{ marginBottom:16 }}>
-                          <div style={{ fontSize:10, fontFamily:'DM Mono', color:C.text3, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>Znajomość produktu (1–10)</div>
-                          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                            {pk.map(f => (
-                              <div key={f.key} style={{ display:'flex', alignItems:'center', gap:10 }}>
-                                <div style={{ fontSize:11, color:C.text2, minWidth:160 }}>{f.label}</div>
-                                <div style={{ flex:1, background:C.surface2, borderRadius:20, height:8, overflow:'hidden' }}>
-                                  <div style={{ width:`${f.avg*10}%`, height:'100%', background:f.avg>=7?C.green:f.avg>=5?C.amber:C.red, borderRadius:20 }}/>
-                                </div>
-                                <div style={{ fontFamily:'DM Mono', fontWeight:600, fontSize:12, color:f.avg>=7?C.green:f.avg>=5?C.amber:C.red, minWidth:36, textAlign:'right' }}>{f.avg}/10</div>
-                                <div style={{ fontSize:9, color:C.text3, fontFamily:'DM Mono', minWidth:50 }}>({f.count} ocen)</div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })()}
-                    {/* Video meetings quality */}
-                    {meetings.length > 0 && (
-                      <div>
-                        <div style={{ fontSize:10, fontFamily:'DM Mono', color:C.text3, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>Jakość spotkań wideo</div>
-                        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
-                          {[
-                            { label:'Spotkań', value: meetings.length, color: C.blue },
-                            { label:'Sukces', value: meetings.filter(m=>m.sukces_poziom==='sukces').length, color: C.green },
-                            { label:'Częściowy', value: meetings.filter(m=>m.sukces_poziom==='czesciowy').length, color: C.amber },
-                            { label:'Śr. ocena', value: avgPct(meetings) != null ? avgPct(meetings)+'%' : '—', color: C.blue },
-                          ].map((s,i) => (
-                            <div key={i} style={{ textAlign:'center', padding:'10px', background:C.surface2, borderRadius:8 }}>
-                              <div style={{ fontFamily:'Outfit', fontWeight:700, fontSize:20, color:s.color }}>{s.value}</div>
-                              <div style={{ fontSize:10, color:C.text3, fontFamily:'DM Mono', marginTop:2 }}>{s.label}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
-                </div>
-
-                {/* TOP best/worst */}
-                <TopCallsBlock phoneCalls={phoneCalls} type="best" C={C} format={format} parseISO={parseISO}/>
-                <TopCallsBlock phoneCalls={phoneCalls} type="worst" C={C} format={format} parseISO={parseISO}/>
+                )}
 
                 {/* Repeated errors */}
                 {repeatedErrors.length > 0 && (
@@ -692,7 +519,7 @@ export default function App() {
                             <div style={{fontSize:10,color:C.text3,fontFamily:'DM Mono'}}>{call.wynik||''}</div>
                           </div>
                           <div style={{display:'flex',flexDirection:'column',gap:4,alignItems:'flex-end'}}>
-                            {call.call_id&&<PlayButton callId={call.call_id}/>}
+                            {call.call_id&&<PlayButton callId={call.call_id} recordingUrl={call.recording_url}/>}
                             {call.bitrix_url&&<a href={call.bitrix_url} target="_blank" rel="noreferrer" style={{fontSize:11,color:C.brand,fontFamily:'DM Mono',textDecoration:'none',padding:'3px 8px',borderRadius:4,border:`1px solid ${C.brandBorder}`,background:C.brandLight}}>Bitrix →</a>}
                           </div>
                           <div style={{color:C.text3,fontSize:12,cursor:'pointer'}} onClick={()=>setActiveCall(activeCall===call.id?null:call.id)}>▼</div>
@@ -802,90 +629,6 @@ export default function App() {
   );
 }
 
-function TranslateButton({text, lang}) {
-  const handle = async () => {
-    const encoded = encodeURIComponent(text.substring(0, 3000));
-    const tl = lang === 'pl' ? 'pl' : 'ru';
-    window.open(`https://translate.google.com/?sl=auto&tl=${tl}&text=${encoded}&op=translate`, '_blank');
-  };
-  return (
-    <button onClick={handle} style={{fontSize:10,padding:'3px 8px',borderRadius:5,border:'1px solid #E8E4DC',background:'#FFF',color:'#6B6560',cursor:'pointer',fontFamily:'DM Mono',whiteSpace:'nowrap'}}>
-      🌐 {lang === 'pl' ? 'PL' : 'RU'}
-    </button>
-  );
-}
-
-function TopCallsBlock({phoneCalls, type, C, format, parseISO}) {
-  const {useState:us} = React;
-  const [openId, setOpenId] = us(null);
-  const isGood = type === 'best';
-  const calls = isGood
-    ? [...phoneCalls].filter(c=>c.wynik_procentowy!=null&&c.wynik_procentowy>=70&&!['bot_niedozwon','operacyjny'].includes(c.typ_rozmowy)&&c.transcript).sort((a,b)=>(b.wynik_procentowy||0)-(a.wynik_procentowy||0)).slice(0,5)
-    : [...phoneCalls].filter(c=>c.wynik_procentowy!=null&&c.wynik_procentowy<40&&!['bot_niedozwon','operacyjny'].includes(c.typ_rozmowy)&&c.transcript).sort((a,b)=>(a.wynik_procentowy||0)-(b.wynik_procentowy||0)).slice(0,5);
-  if (!calls.length) return null;
-  return (
-    <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, marginBottom:24, overflow:'hidden' }}>
-      <div style={{ padding:'14px 20px', borderBottom:`1px solid ${C.border}`, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-        <span style={{ fontFamily:'Outfit', fontWeight:700, fontSize:12, textTransform:'uppercase', letterSpacing:'0.1em', color:isGood?C.green:C.red }}>
-          {isGood ? '⭐ TOP + Najlepsze rozmowy' : '📉 TOP — Najgorsze rozmowy'}
-        </span>
-        <span style={{ fontSize:10, color:C.text3, fontFamily:'DM Mono' }}>{calls.length} rozmów · kliknij aby rozwinąć</span>
-      </div>
-      {calls.map((c,i) => {
-        const m2 = c.sip==='123'||c.manager==='Beata Janoszka'?'Beata':'Kamil';
-        const isOpen = openId === c.id;
-        const transcript = c.dialog || c.transcript || '';
-        return (
-          <div key={c.id} style={{ borderBottom:`1px solid ${C.border}` }}>
-            {/* Header row */}
-            <div onClick={()=>setOpenId(isOpen?null:c.id)} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 20px', cursor:'pointer', background:isOpen?C.surface2:C.surface }}>
-              <div style={{ fontFamily:'Outfit', fontWeight:800, fontSize:16, color:isGood?C.green:C.red, minWidth:24 }}>{i+1}</div>
-              <div style={{ flex:1 }}>
-                <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:3, flexWrap:'wrap' }}>
-                  <span style={{ fontSize:13, fontWeight:600 }}>{c.klient||'—'}</span>
-                  <span style={{ fontSize:10, color:c.sip==='123'?C.beata:C.kamil, fontFamily:'DM Mono', fontWeight:600 }}>{m2}</span>
-                  <span style={{ fontSize:10, color:C.text3, fontFamily:'DM Mono' }}>{c.call_time?format(parseISO(c.call_time),'dd.MM HH:mm'):''}</span>
-                  <span style={{ fontSize:10, color:C.text3, fontFamily:'DM Mono' }}>{c.typ_rozmowy?.replace(/_/g,' ')}</span>
-                  {c.wynik_procentowy!=null && <span style={{ fontFamily:'DM Mono', fontWeight:700, fontSize:11, color:c.wynik_procentowy>=70?C.green:c.wynik_procentowy>=40?C.amber:C.red }}>{c.wynik_procentowy}%</span>}
-                </div>
-                {isGood && c.akcja && <div style={{ fontSize:12, color:C.green, lineHeight:1.4 }}>→ {c.akcja}</div>}
-                {!isGood && c.do_poprawy && <div style={{ fontSize:12, color:C.red, lineHeight:1.4 }}>❌ {c.do_poprawy}</div>}
-              </div>
-              <div style={{ display:'flex', gap:6, alignItems:'center' }}>
-                {c.call_id && <PlayButton callId={c.call_id} small/>}
-                <span style={{ color:C.text3, fontSize:11, transition:'transform 0.2s', transform:isOpen?'rotate(180deg)':'none' }}>▼</span>
-              </div>
-            </div>
-            {/* Expanded transcript */}
-            {isOpen && (
-              <div style={{ padding:'16px 20px', background:C.surface2, borderTop:`1px solid ${C.border}` }}>
-                {c.cytat_klienta && <div style={{ fontSize:12, color:C.text2, fontStyle:'italic', marginBottom:10, padding:'8px 12px', background:C.surface, borderRadius:8, borderLeft:`3px solid ${C.blue}` }}>💬 "{c.cytat_klienta}"</div>}
-                {c.obiekcja && <div style={{ fontSize:12, color:C.red, marginBottom:8 }}>🛑 {c.obiekcja}</div>}
-                {!isGood && c.akcja && <div style={{ fontSize:12, color:C.amber, marginBottom:8 }}>💡 Co zrobić inaczej: {c.akcja}</div>}
-                {c.powod_sukcesu && <div style={{ fontSize:12, color:C.text2, marginBottom:8, lineHeight:1.5 }}>{c.powod_sukcesu}</div>}
-                {transcript && (
-                  <div>
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-                      <div style={{ fontSize:10, fontFamily:'DM Mono', textTransform:'uppercase', color:C.text3 }}>Transkrypt</div>
-                      <div style={{ display:'flex', gap:6 }}>
-                        <TranslateButton text={transcript} lang="pl"/>
-                        <TranslateButton text={transcript} lang="ru"/>
-                      </div>
-                    </div>
-                    <div style={{ fontSize:11, color:C.text2, lineHeight:1.8, background:C.surface, border:`1px solid ${C.border}`, borderRadius:8, padding:'12px 16px', maxHeight:220, overflowY:'auto', fontFamily:'DM Mono', whiteSpace:'pre-wrap' }}>
-                      {transcript.substring(0, 800)}{transcript.length > 800 ? '...' : ''}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 function PlayButton({callId, small}) {
   const {useState:us} = React;
   const [loading, setLoading] = us(false);
@@ -908,17 +651,11 @@ function PlayButton({callId, small}) {
       const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(toSign));
       const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig)));
       
-      // Try Vercel API route first, then local Windows proxy
-      let data = null;
-      try {
-        const r = await fetch('/api/zadarma-record?call_id=' + encodeURIComponent(callId));
-        data = await r.json();
-      } catch(e) {
-        // Fallback to local Windows proxy server
-        const r2 = await fetch('http://localhost:8765/?call_id=' + encodeURIComponent(callId));
-        data = await r2.json();
-      }
-      if (data && data.link) {
+      const resp = await fetch('https://api.zadarma.com/v1/pbx/record/request/?' + paramsStr, {
+        headers: {'Authorization': ZADARMA_KEY + ':' + sigB64}
+      });
+      const data = await resp.json();
+      if (data.link) {
         setUrl(data.link);
         window.open(data.link, '_blank');
       } else {
@@ -1147,7 +884,7 @@ function CallDetail({call,isOpen,onToggle}){
                     <div style={{fontSize:12,color:'#1A7A4A',lineHeight:1.5,paddingLeft:8,borderLeft:'2px solid #1A7A4A'}}>{call.akcja}</div>
                   </div>}
                   {call.powod_sukcesu&&<div style={{fontSize:11,color:'#6B6560',lineHeight:1.5,marginBottom:8}}>{call.powod_sukcesu}</div>}
-                  {call.call_id&&<PlayButton callId={call.call_id} small/>}
+                  {call.call_id&&<PlayButton callId={call.call_id} recordingUrl={call.recording_url} small/>}
                   {call.bitrix_url&&<a href={call.bitrix_url} target="_blank" rel="noreferrer" style={{fontSize:11,color:'#5A171E',fontFamily:'DM Mono',textDecoration:'none',display:'inline-block',marginTop:4}}>🔗 Bitrix →</a>}
                   {!call.bitrix_url&&call.lpr&&<div style={{fontSize:11,color:'#1A7A4A',fontFamily:'DM Mono'}}>✓ ŁPR</div>}
                 </div>

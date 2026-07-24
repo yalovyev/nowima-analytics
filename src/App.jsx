@@ -63,7 +63,44 @@ function md5(str) {
   return Math.abs(hash).toString(16).padStart(8, '0');
 }
 
+const APP_PASSWORD = process.env.REACT_APP_PASSWORD || 'nowima2024';
+
+function LoginScreen({onLogin}) {
+  const [pwd, setPwd] = React.useState('');
+  const [error, setError] = React.useState(false);
+  const [show, setShow] = React.useState(false);
+  const handle = (e) => {
+    e.preventDefault();
+    if (pwd === APP_PASSWORD) { localStorage.setItem('nowima_auth','1'); onLogin(); }
+    else { setError(true); setPwd(''); setTimeout(()=>setError(false),2000); }
+  };
+  return (
+    <div style={{minHeight:'100vh',background:'#5A171E',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'DM Sans',sans-serif"}}>
+      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800&family=DM+Sans:wght@400;500&family=DM+Mono:wght@400&display=swap" rel="stylesheet"/>
+      <div style={{background:'#FFF',borderRadius:16,padding:'40px 48px',width:360,boxShadow:'0 20px 60px rgba(0,0,0,0.3)'}}>
+        <div style={{textAlign:'center',marginBottom:32}}>
+          <div style={{fontFamily:'Outfit',fontWeight:800,fontSize:28,color:'#5A171E',letterSpacing:2,marginBottom:8}}>NOWIMA</div>
+          <div style={{fontSize:12,color:'#A09890',fontFamily:'DM Mono',textTransform:'uppercase',letterSpacing:'0.1em'}}>Analytics Platform</div>
+        </div>
+        <form onSubmit={handle}>
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:11,fontFamily:'DM Mono',color:'#6B6560',marginBottom:6,textTransform:'uppercase',letterSpacing:'0.08em'}}>Hasło</div>
+            <div style={{position:'relative'}}>
+              <input type={show?'text':'password'} value={pwd} onChange={e=>setPwd(e.target.value)} placeholder="Wpisz hasło..." autoFocus
+                style={{width:'100%',padding:'12px 40px 12px 14px',borderRadius:8,border:`1px solid ${error?'#C0392B':'#E8E4DC'}`,fontSize:14,outline:'none',boxSizing:'border-box',background:error?'#FEF2F0':'#FFF'}}/>
+              <button type="button" onClick={()=>setShow(s=>!s)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:16,color:'#A09890'}}>{show?'🙈':'👁'}</button>
+            </div>
+            {error&&<div style={{fontSize:11,color:'#C0392B',marginTop:6,fontFamily:'DM Mono'}}>Nieprawidłowe hasło</div>}
+          </div>
+          <button type="submit" style={{width:'100%',padding:'13px',borderRadius:8,background:'#5A171E',color:'#D1E925',border:'none',cursor:'pointer',fontFamily:'Outfit',fontWeight:700,fontSize:14,letterSpacing:1}}>ZALOGUJ</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
+  const [auth, setAuth] = React.useState(() => localStorage.getItem('nowima_auth') === '1');
   const [allData, setAllData] = useState([]);
   const [prevData, setPrevData] = useState([]);
   const [companies, setCompanies] = useState([]);
@@ -241,7 +278,7 @@ export default function App() {
   const periodLabel = { day:'Dziś', yesterday:'Wczoraj', week:'Tydzień', month:'Miesiąc', all:'Wszystko', custom:'Własny' };
 
   const stageColor = { 'Contract':C.green, 'Finalization':C.green, 'Offer':C.amber, 'Demand':C.blue, 'Rezerwa na przyszłość':C.text3 };
-
+  if (!auth) return <LoginScreen onLogin={() => setAuth(true)} />;
   return (
     <div style={{ fontFamily:"'DM Sans',sans-serif", background:C.bg, minHeight:'100vh', color:C.text }}>
       <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
@@ -547,6 +584,65 @@ export default function App() {
                 {/* TOP best/worst */}
                 <TopCallsBlock phoneCalls={phoneCalls} type="best" C={C} format={format} parseISO={parseISO}/>
                 <TopCallsBlock phoneCalls={phoneCalls} type="worst" C={C} format={format} parseISO={parseISO}/>
+
+                {/* TOP phrases */}
+                {(() => {
+                  const salesCalls = phoneCalls.filter(c=>!['bot_niedozwon','operacyjny'].includes(c.typ_rozmowy));
+                  const bestPhrases = salesCalls.filter(c=>c.wynik_procentowy>=70&&c.cytat_klienta&&c.sukces_wg_kryteriow).sort((a,b)=>(b.wynik_procentowy||0)-(a.wynik_procentowy||0)).slice(0,5);
+                  const handledObj = salesCalls.filter(c=>c.obiekcja&&c.objekcja_jak_obsluzona&&c.sukces_wg_kryteriow).slice(0,3);
+                  const worstPhrases = salesCalls.filter(c=>c.wynik_procentowy<40&&c.do_poprawy&&c.cytat_klienta).sort((a,b)=>(a.wynik_procentowy||0)-(b.wynik_procentowy||0)).slice(0,5);
+                  if (!bestPhrases.length && !worstPhrases.length) return null;
+                  return (
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:24}}>
+                      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,overflow:'hidden'}}>
+                        <div style={{padding:'14px 20px',borderBottom:`1px solid ${C.border}`,background:C.greenLight}}>
+                          <span style={{fontFamily:'Outfit',fontWeight:700,fontSize:12,textTransform:'uppercase',letterSpacing:'0.1em',color:C.green}}>💬 Frazy które działają</span>
+                        </div>
+                        <div style={{padding:'4px 0'}}>
+                          {bestPhrases.map((c,i) => (
+                            <div key={c.id} style={{padding:'12px 20px',borderBottom:`1px solid ${C.border}`}}>
+                              <div style={{fontSize:12,color:C.text,fontStyle:'italic',lineHeight:1.5,marginBottom:6}}>💬 "{c.cytat_klienta}"</div>
+                              <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                                <span style={{fontSize:10,color:c.sip==='123'?C.beata:C.kamil,fontFamily:'DM Mono',fontWeight:600}}>{c.sip==='123'||c.manager==='Beata Janoszka'?'Beata':'Kamil'}</span>
+                                <span style={{fontSize:10,color:C.text3,fontFamily:'DM Mono'}}>{c.typ_rozmowy?.replace(/_/g,' ')}</span>
+                                <span style={{fontSize:10,fontFamily:'DM Mono',fontWeight:700,color:C.green}}>{c.wynik_procentowy}%</span>
+                                {c.wynik==='gorący lead'&&<span style={{fontSize:10,color:C.red}}>🔥</span>}
+                              </div>
+                              {c.akcja&&<div style={{fontSize:11,color:C.green,marginTop:4}}>→ {c.akcja}</div>}
+                            </div>
+                          ))}
+                          {handledObj.map((c,i) => (
+                            <div key={'obj'+c.id} style={{padding:'12px 20px',borderBottom:`1px solid ${C.border}`,background:C.greenLight+'50'}}>
+                              <div style={{fontSize:10,fontFamily:'DM Mono',color:C.green,marginBottom:4,textTransform:'uppercase'}}>✓ Obsłużona obiekcja</div>
+                              <div style={{fontSize:12,color:C.red,marginBottom:4}}>🛑 "{c.obiekcja}"</div>
+                              <div style={{fontSize:12,color:C.green,lineHeight:1.4}}>→ {c.objekcja_jak_obsluzona||c.akcja}</div>
+                            </div>
+                          ))}
+                          {!bestPhrases.length&&!handledObj.length&&<div style={{padding:'20px',textAlign:'center',color:C.text3,fontSize:12,fontFamily:'DM Mono'}}>Brak danych za ten okres</div>}
+                        </div>
+                      </div>
+                      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,overflow:'hidden'}}>
+                        <div style={{padding:'14px 20px',borderBottom:`1px solid ${C.border}`,background:C.redLight}}>
+                          <span style={{fontFamily:'Outfit',fontWeight:700,fontSize:12,textTransform:'uppercase',letterSpacing:'0.1em',color:C.red}}>❌ Frazy które nie działają</span>
+                        </div>
+                        <div style={{padding:'4px 0'}}>
+                          {worstPhrases.map((c,i) => (
+                            <div key={c.id} style={{padding:'12px 20px',borderBottom:`1px solid ${C.border}`}}>
+                              <div style={{fontSize:12,color:C.text,fontStyle:'italic',lineHeight:1.5,marginBottom:6}}>💬 "{c.cytat_klienta}"</div>
+                              <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:4}}>
+                                <span style={{fontSize:10,color:c.sip==='123'?C.beata:C.kamil,fontFamily:'DM Mono',fontWeight:600}}>{c.sip==='123'||c.manager==='Beata Janoszka'?'Beata':'Kamil'}</span>
+                                <span style={{fontSize:10,color:C.text3,fontFamily:'DM Mono'}}>{c.typ_rozmowy?.replace(/_/g,' ')}</span>
+                                <span style={{fontSize:10,fontFamily:'DM Mono',fontWeight:700,color:C.red}}>{c.wynik_procentowy}%</span>
+                              </div>
+                              {c.do_poprawy&&<div style={{fontSize:11,color:C.amber,lineHeight:1.4,padding:'6px 10px',background:C.amberLight,borderRadius:6,border:`1px solid ${C.amberBorder}`}}>📈 {c.do_poprawy}</div>}
+                            </div>
+                          ))}
+                          {!worstPhrases.length&&<div style={{padding:'20px',textAlign:'center',color:C.text3,fontSize:12,fontFamily:'DM Mono'}}>Brak danych za ten okres</div>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Repeated errors */}
                 {repeatedErrors.length > 0 && (

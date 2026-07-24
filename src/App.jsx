@@ -908,9 +908,16 @@ function PlayButton({callId, small}) {
       const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(toSign));
       const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig)));
       
-      // Use Vercel API route as proxy (avoids CORS)
-      const r = await fetch('/api/zadarma-record?call_id=' + encodeURIComponent(callId));
-      const data = await r.json();
+      // Try Vercel API route first, then local Windows proxy
+      let data = null;
+      try {
+        const r = await fetch('/api/zadarma-record?call_id=' + encodeURIComponent(callId));
+        data = await r.json();
+      } catch(e) {
+        // Fallback to local Windows proxy server
+        const r2 = await fetch('http://localhost:8765/?call_id=' + encodeURIComponent(callId));
+        data = await r2.json();
+      }
       if (data && data.link) {
         setUrl(data.link);
         window.open(data.link, '_blank');

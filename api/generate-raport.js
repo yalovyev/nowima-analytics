@@ -160,25 +160,7 @@ Wypełnij dokładnie ten szablon. Nie zmieniaj kolejności sekcji.
 | Działanie | Osoba odpowiedzialna | Termin |
 |-----------|---------------------|--------|
 
----
-
-## OCENA AI
-> ⚠️ Poniższa sekcja zawiera analizę AI i nie stanowi zapisu faktów przekazanych podczas rozmowy.
-
-**Pewność analizy:** ★★★★★ / ★★★★☆ / ★★★☆☆ / ★★☆☆☆ / ★☆☆☆☆
-*(5 gwiazdek = wysoka pewność, 1 gwiazdka = niska pewność – zależy od ilości i jakości informacji w transkrypcie)*
-
-**Cytaty klienta:**
-*(dosłowne cytaty z rozmowy, które mają znaczenie biznesowe)*
-
-**Szanse na współpracę:**
-
-**Główne ryzyka:**
-
-**Informacje, których handlowiec nie uzyskał:**
-- [ ]
-
-**Rekomendacje na kolejne spotkanie:**`;
+`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',

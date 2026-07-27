@@ -8,6 +8,7 @@ const ZADARMA_KEY = process.env.REACT_APP_ZADARMA_KEY || '';
 const ZADARMA_SECRET = process.env.REACT_APP_ZADARMA_SECRET || '';
 const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY || '';
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const ANTHROPIC_KEY = process.env.REACT_APP_ANTHROPIC_KEY || '';
 
 const C = {
   brand:'#5A171E', brandLight:'#F4ECED', brandBorder:'rgba(90,23,30,0.15)',
@@ -1014,6 +1015,168 @@ function NotatkaPanel({meeting, C, format, parseISO}) {
   );
 }
 
+function RaportButton({call, meeting, C}) {
+  const [open, setOpen] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const [raport, setRaport] = React.useState(null);
+  const [copied, setCopied] = React.useState(false);
+
+  const data = call || meeting;
+  if (!data) return null;
+
+  const transcript = data.dialog || data.transcript || '';
+  if (!transcript) return null;
+
+  const generate = async (e) => {
+    e.stopPropagation();
+    if (raport) { setOpen(true); return; }
+    setLoading(true);
+    setOpen(true);
+    try {
+      const prompt = `Jesteś ekspertem ds. sprzedaży B2B w firmie NOWIMA (polska firma dostarczająca brygady spawaczy, elektryków, monterów do projektów przemysłowych w Europie).
+
+Na podstawie poniższego transkryptu rozmowy z klientem wypełnij szablon raportu. Jeśli danej informacji nie ma w transkrypcie, napisz "nie ustalono" lub zostaw puste. Pisz zwięźle i konkretnie. Odpowiedz TYLKO wypełnionym szablonem, bez żadnego wstępu.
+
+DANE ROZMOWY:
+Menedżer: ${data.manager || '—'}
+Klient/Firma: ${data.klient || '—'}
+Data: ${data.call_time ? data.call_time.substring(0,10) : '—'}
+Wynik: ${data.wynik || '—'}
+Outcome: ${data.outcome || '—'}
+Akcja: ${data.akcja || '—'}
+Obiekcja: ${data.obiekcja || '—'}
+
+TRANSKRYPT:
+${transcript.substring(0, 6000)}
+
+WYPEŁNIJ SZABLON:
+
+1. INFORMACJE OGÓLNE
+Firma: 
+Data spotkania: 
+Uczestnicy (po stronie klienta): 
+Handlowiec NOWIMA: 
+Status klienta: (New Lead / Warm Lead / Hot Lead / Active Client)
+
+2. INFORMACJE O KLIENCIE
+Opis działalności: 
+Realizowane projekty: 
+Kraje działalności: 
+Wielkość firmy: 
+Osoby decyzyjne: 
+
+3. CEL SPOTKANIA
+
+4. POTRZEBY KLIENTA
+Poszukiwani specjaliści (stanowisko / liczba / priorytet): 
+Lokalizacja projektu (kraj / miasto): 
+Planowany start: 
+Planowane zakończenie: 
+Godziny / zmiany: 
+
+5. ZAKRES PROJEKTU
+Opis prac: 
+Technologie / materiały: 
+
+6. WYMAGANIA KLIENTA
+Kompetencje techniczne: 
+Certyfikaty: 
+Języki: 
+Wymagania organizacyjne (A1, odzież, narzędzia, zakwaterowanie): 
+
+7. CO JEST NAJWAŻNIEJSZE DLA KLIENTA
+
+8. OBAWY I PROBLEMY KLIENTA
+
+9. INFORMACJE PRZEKAZANE PRZEZ NOWIMA
+
+10. WARUNKI HANDLOWE
+Model współpracy: 
+Omawiane stawki: 
+
+11. CZEGO OCZEKUJE KLIENT OD NOWIMA
+
+12. USTALENIA
+Zadania NOWIMA:
+- 
+Zadania klienta:
+- 
+
+13. INFORMACJE WYMAGAJĄCE DOPRECYZOWANIA
+
+14. KOLEJNY KROK
+Działanie: 
+Osoba odpowiedzialna: 
+Termin: 
+
+15. PODSUMOWANIE
+Zainteresowanie klienta: 
+Szanse na współpracę: 
+Główne ryzyka: 
+Etap procesu sprzedaży: `;
+
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 2000,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+      const result = await response.json();
+      const text = result.content?.[0]?.text || 'Błąd generowania raportu';
+      setRaport(text);
+    } catch(err) {
+      setRaport('Błąd połączenia z API: ' + err.message);
+    }
+    setLoading(false);
+  };
+
+  const copy = () => {
+    navigator.clipboard.writeText(raport || '').then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <>
+      <button onClick={generate} style={{fontSize:10,padding:'3px 8px',borderRadius:5,border:'1px solid #E8E4DC',background:'#FFF',color:'#6B6560',cursor:'pointer',fontFamily:'DM Mono',whiteSpace:'nowrap'}}>
+        📄 Raport
+      </button>
+      {open && (
+        <div style={{position:'fixed',inset:0,zIndex:400,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',padding:20}} onClick={()=>setOpen(false)}>
+          <div style={{background:'#FFF',borderRadius:14,width:'100%',maxWidth:680,maxHeight:'90vh',display:'flex',flexDirection:'column',boxShadow:'0 20px 60px rgba(0,0,0,0.3)'}} onClick={e=>e.stopPropagation()}>
+            <div style={{padding:'16px 20px',borderBottom:'1px solid #E8E4DC',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
+              <div style={{fontFamily:'Outfit',fontWeight:700,fontSize:14,color:'#5A171E'}}>📄 Raport ze spotkania · {(call||meeting)?.klient||'—'}</div>
+              <button onClick={()=>setOpen(false)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:'#A09890',lineHeight:1}}>×</button>
+            </div>
+            <div style={{flex:1,overflow:'auto',padding:'16px 20px'}}>
+              {loading ? (
+                <div style={{textAlign:'center',padding:60,color:'#A09890',fontFamily:'DM Mono'}}>
+                  <div style={{fontSize:24,marginBottom:12}}>⏳</div>
+                  <div>Generuję raport przez Claude AI...</div>
+                  <div style={{fontSize:11,marginTop:8,color:'#C0C0C0'}}>Zwykle trwa 10–20 sekund</div>
+                </div>
+              ) : (
+                <pre style={{fontSize:12,lineHeight:1.8,color:'#1A1714',fontFamily:'DM Mono',whiteSpace:'pre-wrap',margin:0}}>{raport}</pre>
+              )}
+            </div>
+            {!loading && raport && (
+              <div style={{padding:'12px 20px',borderTop:'1px solid #E8E4DC',flexShrink:0}}>
+                <button onClick={copy} style={{width:'100%',padding:'10px',borderRadius:8,background:copied?'#1A7A4A':'#5A171E',color:copied?'white':'#D1E925',border:'none',cursor:'pointer',fontFamily:'Outfit',fontWeight:600,fontSize:13,transition:'background 0.2s'}}>
+                  {copied ? '✓ Skopiowano!' : '📋 Kopiuj raport'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function TranslateButton({text, lang}) {
   const handle = async () => {
     const encoded = encodeURIComponent(text.substring(0, 3000));
@@ -1247,6 +1410,7 @@ function MeetingCard({meeting,isOpen,onToggle}){
               </div>)}
               {meeting.outcome&&<div style={{fontSize:12,color:'#6B6560',lineHeight:1.5,marginBottom:8}}><strong>Outcome:</strong> {meeting.outcome}</div>}
               {meeting.powod_sukcesu&&<div style={{fontSize:12,color:'#6B6560',lineHeight:1.5}}><strong>Ocena:</strong> {meeting.powod_sukcesu}</div>}
+              {meeting.transcript&&<div style={{marginTop:10}}><RaportButton meeting={meeting} C={C}/></div>}
             </div>
           </div>
           {meeting.transcript&&(
@@ -1348,6 +1512,7 @@ function CallDetail({call,isOpen,onToggle}){
                   </div>}
                   {call.powod_sukcesu&&<div style={{fontSize:11,color:'#6B6560',lineHeight:1.5,marginBottom:8}}>{call.powod_sukcesu}</div>}
                   {call.call_id&&<PlayButton callId={call.call_id} recordingUrl={call.recording_url} small/>}
+                  {call.transcript&&<div style={{marginTop:6}}><RaportButton call={call} C={C}/></div>}
                   {call.bitrix_url&&<a href={call.bitrix_url} target="_blank" rel="noreferrer" style={{fontSize:11,color:'#5A171E',fontFamily:'DM Mono',textDecoration:'none',display:'inline-block',marginTop:4}}>🔗 Bitrix →</a>}
                   {!call.bitrix_url&&call.lpr&&<div style={{fontSize:11,color:'#1A7A4A',fontFamily:'DM Mono'}}>✓ ŁPR</div>}
                 </div>

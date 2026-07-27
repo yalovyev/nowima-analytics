@@ -64,7 +64,12 @@ function md5(str) {
   return Math.abs(hash).toString(16).padStart(8, '0');
 }
 
-const APP_PASSWORD = process.env.REACT_APP_PASSWORD || 'nowima2024';
+const PASSWORDS = {
+  'nowima2026': 'admin',
+  'beata2026': 'beata',
+  'kamil2026': 'kamil',
+};
+const APP_PASSWORD = process.env.REACT_APP_PASSWORD || 'nowima2026';
 
 function LoginScreen({onLogin}) {
   const [pwd, setPwd] = React.useState('');
@@ -72,7 +77,8 @@ function LoginScreen({onLogin}) {
   const [show, setShow] = React.useState(false);
   const handle = (e) => {
     e.preventDefault();
-    if (pwd === APP_PASSWORD) { localStorage.setItem('nowima_auth','1'); onLogin(); }
+    const role = PASSWORDS[pwd];
+    if (role) { localStorage.setItem('nowima_auth','1'); localStorage.setItem('nowima_role', role); onLogin(); }
     else { setError(true); setPwd(''); setTimeout(()=>setError(false),2000); }
   };
   return (
@@ -102,6 +108,7 @@ function LoginScreen({onLogin}) {
 
 export default function App() {
   const [auth, setAuth] = React.useState(() => localStorage.getItem('nowima_auth') === '1');
+  const [role] = React.useState(() => localStorage.getItem('nowima_role') || 'admin');
   const [allData, setAllData] = useState([]);
   const [prevData, setPrevData] = useState([]);
   const [companies, setCompanies] = useState([]);
@@ -112,7 +119,12 @@ export default function App() {
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
   const [showCalendar, setShowCalendar] = useState(false);
-  const [mgr, setMgr] = useState('all');
+  const [mgr, setMgr] = useState(() => {
+    const r = localStorage.getItem('nowima_role') || 'admin';
+    if (r === 'beata') return 'beata';
+    if (r === 'kamil') return 'kamil';
+    return 'all';
+  });
   const [source, setSource] = useState('all');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(new Date());
@@ -335,12 +347,19 @@ export default function App() {
 
           <div style={{ width:1, height:20, background:'rgba(255,255,255,0.15)', margin:'0 4px' }}/>
 
-          {/* Manager filter */}
-          <div style={{ display:'flex', gap:3 }}>
-            {[['all','Wszyscy'],['beata','Beata'],['kamil','Kamil']].map(([m,l]) => (
-              <button key={m} onClick={() => setMgr(m)} style={{ padding:'4px 12px', borderRadius:20, border:`1px solid`, cursor:'pointer', fontSize:11, fontFamily:'DM Mono', borderColor:mgr===m?C.lime:'rgba(255,255,255,0.2)', background:mgr===m?'rgba(209,233,37,0.15)':'transparent', color:mgr===m?C.lime:'rgba(255,255,255,0.65)' }}>{l}</button>
-            ))}
-          </div>
+          {/* Manager filter - only for admin */}
+          {role === 'admin' && (
+            <div style={{ display:'flex', gap:3 }}>
+              {[['all','Wszyscy'],['beata','Beata'],['kamil','Kamil']].map(([m,l]) => (
+                <button key={m} onClick={() => setMgr(m)} style={{ padding:'4px 12px', borderRadius:20, border:`1px solid`, cursor:'pointer', fontSize:11, fontFamily:'DM Mono', borderColor:mgr===m?C.lime:'rgba(255,255,255,0.2)', background:mgr===m?'rgba(209,233,37,0.15)':'transparent', color:mgr===m?C.lime:'rgba(255,255,255,0.65)' }}>{l}</button>
+              ))}
+            </div>
+          )}
+          {role !== 'admin' && (
+            <div style={{ fontSize:11, fontFamily:'DM Mono', color:C.lime, padding:'4px 12px', borderRadius:20, border:`1px solid ${C.lime}`, background:'rgba(209,233,37,0.15)' }}>
+              {role === 'beata' ? 'Beata Janoszka' : 'Kamil Wisniewski'}
+            </div>
+          )}
 
           <div style={{ width:1, height:20, background:'rgba(255,255,255,0.15)', margin:'0 4px' }}/>
 

@@ -1033,87 +1033,96 @@ function RaportButton({call, meeting, C}) {
     setLoading(true);
     setOpen(true);
     try {
-      const prompt = `Jesteś ekspertem ds. sprzedaży B2B w firmie NOWIMA (polska firma dostarczająca brygady spawaczy, elektryków, monterów do projektów przemysłowych w Europie).
-
-Na podstawie poniższego transkryptu rozmowy z klientem wypełnij szablon raportu. Jeśli danej informacji nie ma w transkrypcie, napisz "nie ustalono" lub zostaw puste. Pisz zwięźle i konkretnie. Odpowiedz TYLKO wypełnionym szablonem, bez żadnego wstępu.
+      const prompt = `Na podstawie poniższych danych ze spotkania handlowego przygotuj profesjonalny raport.
+Wypełnij WSZYSTKIE sekcje. Jeżeli informacja nie padła – wpisz "Nie ustalono".
+Wyciągaj wyłącznie informacje biznesowe z transkryptu. Nie zgaduj, nie uzupełniaj.
 
 DANE ROZMOWY:
-Menedżer: ${data.manager || '—'}
-Klient/Firma: ${data.klient || '—'}
+Menedżer NOWIMA: ${data.manager || '—'}
+Firma / Klient: ${data.klient || '—'}
 Data: ${data.call_time ? data.call_time.substring(0,10) : '—'}
-Wynik: ${data.wynik || '—'}
+Wynik rozmowy: ${data.wynik || '—'}
 Outcome: ${data.outcome || '—'}
-Akcja: ${data.akcja || '—'}
+Akcja po rozmowie: ${data.akcja || '—'}
 Obiekcja: ${data.obiekcja || '—'}
+Cytat klienta: ${data.cytat_klienta || '—'}
 
 TRANSKRYPT:
 ${transcript.substring(0, 3000)}
 
-WYPEŁNIJ SZABLON:
+---
+WYPEŁNIJ RAPORT W DOKŁADNIE TAKIM FORMACIE:
 
 1. INFORMACJE OGÓLNE
 Firma: 
 Data spotkania: 
-Uczestnicy (po stronie klienta): 
+Uczestnicy po stronie klienta: 
 Handlowiec NOWIMA: 
 Status klienta: (New Lead / Warm Lead / Hot Lead / Active Client)
 
 2. INFORMACJE O KLIENCIE
-Opis działalności: 
+Działalność firmy: 
 Realizowane projekty: 
 Kraje działalności: 
 Wielkość firmy: 
 Osoby decyzyjne: 
+Główna osoba kontaktowa: 
 
 3. CEL SPOTKANIA
 
-4. POTRZEBY KLIENTA
-Poszukiwani specjaliści (stanowisko / liczba / priorytet): 
-Lokalizacja projektu (kraj / miasto): 
-Planowany start: 
-Planowane zakończenie: 
-Godziny / zmiany: 
+4. AKTUALNA SYTUACJA KLIENTA
+(problemy, potrzeby, sezonowość, rozwój, nowe projekty)
 
-5. ZAKRES PROJEKTU
-Opis prac: 
+5. POTRZEBY KLIENTA
+| Stanowisko | Liczba osób | Priorytet | Termin rozpoczęcia | Lokalizacja |
+|------------|-------------|-----------|-------------------|-------------|
+|            |             |           |                   |             |
+
+6. INFORMACJE O PROJEKCIE
+Kraj: 
+Lokalizacja: 
+Zakres prac: 
 Technologie / materiały: 
+Harmonogram: 
+Godziny pracy / system zmianowy: 
 
-6. WYMAGANIA KLIENTA
-Kompetencje techniczne: 
-Certyfikaty: 
-Języki: 
-Wymagania organizacyjne (A1, odzież, narzędzia, zakwaterowanie): 
+7. WYMAGANIA KLIENTA
+Kompetencje techniczne (doświadczenie, certyfikaty, języki, testy): 
+Wymagania organizacyjne (A1, zakwaterowanie, odzież, narzędzia): 
 
-7. CO JEST NAJWAŻNIEJSZE DLA KLIENTA
+8. CO JEST NAJWAŻNIEJSZE DLA KLIENTA
 
-8. OBAWY I PROBLEMY KLIENTA
+9. OBAWY I PROBLEMY KLIENTA
 
-9. INFORMACJE PRZEKAZANE PRZEZ NOWIMA
+10. INFORMACJE PRZEKAZANE PRZEZ NOWIMA
 
-10. WARUNKI HANDLOWE
+11. WARUNKI HANDLOWE
 Model współpracy: 
-Omawiane stawki: 
+Minimalny okres: 
+| Stanowisko | Stawka | Waluta | Uwagi |
+|------------|--------|--------|-------|
+|            |        |        |       |
 
-11. CZEGO OCZEKUJE KLIENT OD NOWIMA
+12. CZEGO OCZEKUJE KLIENT OD NOWIMA
 
-12. USTALENIA
+13. USTALENIA
 Zadania NOWIMA:
 - 
 Zadania klienta:
 - 
 
-13. INFORMACJE WYMAGAJĄCE DOPRECYZOWANIA
+14. INFORMACJE WYMAGAJĄCE DOPRECYZOWANIA
 
-14. KOLEJNY KROK
+15. KOLEJNY KROK
 Działanie: 
 Osoba odpowiedzialna: 
 Termin: 
 
-15. PODSUMOWANIE
-Zainteresowanie klienta: 
-Szanse na współpracę: 
-Główne ryzyka: 
-Etap procesu sprzedaży: `;
+16. PODSUMOWANIE
+1. Zainteresowanie klienta: 
+2. Największe szanse na sprzedaż: 
+3. Największe ryzyka: 
+4. Etap procesu sprzedaży: `;
 
       const response = await fetch('/api/generate-raport', {
         method: 'POST',

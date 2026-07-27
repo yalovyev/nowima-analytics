@@ -196,7 +196,7 @@ export default function App() {
     setCompaniesLoading(false);
   }, [companies.length]);
 
-  useEffect(() => { fetchData(); const i = setInterval(fetchData, 5 * 60 * 1000); return () => clearInterval(i); }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
   // Lock mgr filter for non-admin users
   useEffect(() => {
     if (role === 'beata') setMgr('beata');
@@ -412,7 +412,7 @@ export default function App() {
             {pilne.filter(c=>c.wynik!=='gorący lead').length > 0 && <span style={{ fontSize:11, padding:'3px 8px', borderRadius:20, border:'1px solid #F5D89A', color:'#C07A1A', background:'rgba(192,122,26,0.1)', fontFamily:'DM Mono' }}>⚠️ {pilne.filter(c=>c.wynik!=='gorący lead').length}</span>}
             <button onClick={exportCSV} style={{ padding:'4px 10px', borderRadius:20, border:'1px solid rgba(255,255,255,0.2)', background:'transparent', color:'rgba(255,255,255,0.6)', fontSize:11, fontFamily:'DM Mono', cursor:'pointer' }}>⬇ CSV</button>
             {meetings.length > 0 && <button onClick={() => setMeetingPanel(true)} style={{ padding:'4px 10px', borderRadius:20, border:`1px solid ${C.lime}`, background:'rgba(209,233,37,0.15)', color:C.lime, fontSize:11, fontFamily:'DM Mono', cursor:'pointer' }}>🎥 {meetings.length}</button>}
-            <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', fontFamily:'DM Mono' }}>↻ {format(lastUpdate,'HH:mm')}</span>
+            <button onClick={fetchData} style={{ padding:'4px 10px', borderRadius:20, border:'1px solid rgba(255,255,255,0.2)', background:'transparent', color:'rgba(255,255,255,0.6)', fontSize:11, fontFamily:'DM Mono', cursor:'pointer' }}>↻ {format(lastUpdate,'HH:mm')}</button>
           </div>
         </div>
       </header>

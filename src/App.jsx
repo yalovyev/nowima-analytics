@@ -405,10 +405,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Compare toggle */}
-          <button onClick={() => setCompareMode(!compareMode)} style={{ padding:'4px 10px', borderRadius:20, border:'1px solid', cursor:'pointer', fontSize:11, fontFamily:'DM Mono', borderColor:compareMode?C.lime:'rgba(255,255,255,0.2)', background:compareMode?'rgba(209,233,37,0.15)':'transparent', color:compareMode?C.lime:'rgba(255,255,255,0.65)' }}>
-            {compareMode ? '⚡ Porównanie ON' : '⚡ Porównaj'}
-          </button>
+
 
           <div style={{ marginLeft:'auto', display:'flex', gap:8, alignItems:'center' }}>
             {hot.length > 0 && <span style={{ fontSize:11, padding:'3px 8px', borderRadius:20, border:`1px solid ${C.lime}`, color:C.lime, background:'rgba(209,233,37,0.1)', fontFamily:'DM Mono' }}>🔥 {hot.length}</span>}

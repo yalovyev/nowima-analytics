@@ -1115,17 +1115,13 @@ Szanse na współpracę:
 Główne ryzyka: 
 Etap procesu sprzedaży: `;
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch('/api/generate-raport', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 2000,
-          messages: [{ role: 'user', content: prompt }]
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
       });
       const result = await response.json();
-      const text = result.content?.[0]?.text || 'Błąd generowania raportu';
+      const text = result.content?.[0]?.text || result.error || 'Błąd generowania raportu';
       setRaport(text);
     } catch(err) {
       setRaport('Błąd połączenia z API: ' + err.message);

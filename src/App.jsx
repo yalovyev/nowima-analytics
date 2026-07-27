@@ -1165,7 +1165,27 @@ Termin:
                   <div style={{fontSize:11,marginTop:8,color:'#C0C0C0'}}>Zwykle trwa 10–20 sekund</div>
                 </div>
               ) : (
-                <pre style={{fontSize:12,lineHeight:1.8,color:'#1A1714',fontFamily:'DM Mono',whiteSpace:'pre-wrap',margin:0}}>{raport}</pre>
+                <div style={{fontSize:12,lineHeight:1.8,color:'#1A1714'}}>
+                  {raport.split('\n').map((line, i) => {
+                    if (line.startsWith('# ')) return <h2 key={i} style={{fontFamily:'Outfit',fontWeight:700,fontSize:16,color:'#5A171E',margin:'16px 0 8px',borderBottom:'2px solid #5A171E',paddingBottom:4}}>{line.replace(/^# /,'')}</h2>;
+                    if (line.startsWith('## ')) return <h3 key={i} style={{fontFamily:'Outfit',fontWeight:700,fontSize:13,color:'#5A171E',margin:'14px 0 6px',textTransform:'uppercase',letterSpacing:'0.05em'}}>{line.replace(/^## /,'')}</h3>;
+                    if (line.startsWith('---')) return <hr key={i} style={{border:'none',borderTop:'1px solid #E8E4DC',margin:'8px 0'}}/>;
+                    if (line.startsWith('| ')) {
+                      const cells = line.split('|').filter(c=>c.trim()).map(c=>c.trim());
+                      const isSep = cells.every(c=>/^[-:]+$/.test(c));
+                      if (isSep) return null;
+                      const isHeader = i > 0 && raport.split('\n')[i+1]?.includes('---');
+                      return <div key={i} style={{display:'grid',gridTemplateColumns:`repeat(${cells.length},1fr)`,gap:0,borderBottom:'1px solid #E8E4DC'}}>
+                        {cells.map((c,j)=><div key={j} style={{padding:'6px 10px',background:isHeader?'#F9F8F5':'white',fontWeight:isHeader?600:400,fontSize:11,borderRight:j<cells.length-1?'1px solid #E8E4DC':'none',fontFamily:isHeader?'DM Mono':'DM Sans'}}>{c.replace(/\*\*/g,'')}</div>)}
+                      </div>;
+                    }
+                    if (line.startsWith('- ') || line.startsWith('* ')) return <div key={i} style={{display:'flex',gap:8,marginBottom:3}}><span style={{color:'#5A171E',flexShrink:0}}>•</span><span>{line.replace(/^[-*] /,'').replace(/\*\*/g,'')}</span></div>;
+                    if (line.startsWith('> ')) return <div key={i} style={{background:'#FEF8EC',border:'1px solid #F5D89A',borderRadius:6,padding:'6px 10px',margin:'6px 0',fontSize:11,color:'#C07A1A'}}>{line.replace(/^> /,'')}</div>;
+                    if (/^\d+\./.test(line)) return <div key={i} style={{marginBottom:3,paddingLeft:4}}>{line.replace(/\*\*/g,'')}</div>;
+                    if (line.trim() === '') return <div key={i} style={{height:6}}/>;
+                    return <div key={i} style={{marginBottom:2}}>{line.replace(/\*\*/g,'')}</div>;
+                  })}
+                </div>
               )}
             </div>
             {!loading && raport && (

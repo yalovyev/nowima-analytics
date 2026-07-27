@@ -1,32 +1,48 @@
+const crypto = require('crypto');
+const https = require('https');
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
-  if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
-  const ANTHROPIC_KEY = process.env.REACT_APP_ANTHROPIC_KEY;
-  if (!ANTHROPIC_KEY) { res.status(500).json({ error: 'Missing API key' }); return; }
+  const { call_id } = req.query;
+  if (!call_id) { res.status(400).json({ error: 'call_id required' }); return; }
+
+  const KEY    = process.env.ZADARMA_KEY    || process.env.REACT_APP_ZADARMA_KEY;
+  const SECRET = process.env.ZADARMA_SECRET || process.env.REACT_APP_ZADARMA_SECRET;
+
+  if (!KEY || !SECRET) {
+    res.status(500).json({ error: 'Missing env vars' });
+    return;
+  }
+
+  // Must match Python SDK: sorted params including format=json
+  const paramsObj = { call_id, format: 'json', lifetime: '1800' };
+  const paramsString = Object.keys(paramsObj).sort()
+    .map(k => k + '=' + encodeURIComponent(paramsObj[k]))
+    .join('&');
+  
+  const path = '/v1/pbx/record/request/';
+  const md5 = crypto.createHash('md5').update(paramsString).digest('hex');
+  const toSign = path + paramsString + md5;
+  
+  // Python: hmac.new(SECRET, toSign, sha1).hexdigest() then base64 of that hex string
+  const hmacHex = crypto.createHmac('sha1', SECRET).update(toSign).digest('hex');
+  const sig = Buffer.from(hmacHex).toString('base64');
+  const auth = KEY + ':' + sig;
+
+  const url = `https://api.zadarma.com${path}?${paramsString}`;
 
   try {
-    const { prompt } = req.body;
-    
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 3000,
-        messages: [{ role: 'user', content: prompt }]
-      })
+    const data = await new Promise((resolve, reject) => {
+      const r = https.get(url, { headers: { Authorization: auth } }, resp => {
+        let body = '';
+        resp.on('data', d => body += d);
+        resp.on('end', () => { try { resolve(JSON.parse(body)); } catch(e) { reject(e); } });
+      });
+      r.on('error', reject);
     });
-
-    const data = await response.json();
     res.status(200).json(data);
   } catch (e) {
     res.status(500).json({ error: e.message });

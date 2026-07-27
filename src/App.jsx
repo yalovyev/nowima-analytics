@@ -127,6 +127,8 @@ export default function App() {
   const [portfolioFilter, setPortfolioFilter] = useState('all');
   const [portfolioMgr, setPortfolioMgr] = useState('all');
   const [portfolioPage, setPortfolioPage] = useState(0);
+  const [meetingPanel, setMeetingPanel] = useState(false);
+  const [meetingPanelCall, setMeetingPanelCall] = useState(null);
   const PAGE_SIZE = 100;
 
   const getRange = useCallback((offset = 0) => {
@@ -367,6 +369,7 @@ export default function App() {
             {hot.length > 0 && <span style={{ fontSize:11, padding:'3px 8px', borderRadius:20, border:`1px solid ${C.lime}`, color:C.lime, background:'rgba(209,233,37,0.1)', fontFamily:'DM Mono' }}>🔥 {hot.length}</span>}
             {pilne.filter(c=>c.wynik!=='gorący lead').length > 0 && <span style={{ fontSize:11, padding:'3px 8px', borderRadius:20, border:'1px solid #F5D89A', color:'#C07A1A', background:'rgba(192,122,26,0.1)', fontFamily:'DM Mono' }}>⚠️ {pilne.filter(c=>c.wynik!=='gorący lead').length}</span>}
             <button onClick={exportCSV} style={{ padding:'4px 10px', borderRadius:20, border:'1px solid rgba(255,255,255,0.2)', background:'transparent', color:'rgba(255,255,255,0.6)', fontSize:11, fontFamily:'DM Mono', cursor:'pointer' }}>⬇ CSV</button>
+            {meetings.length > 0 && <button onClick={() => setMeetingPanel(true)} style={{ padding:'4px 10px', borderRadius:20, border:`1px solid ${C.lime}`, background:'rgba(209,233,37,0.15)', color:C.lime, fontSize:11, fontFamily:'DM Mono', cursor:'pointer' }}>🎥 {meetings.length}</button>}
             <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', fontFamily:'DM Mono' }}>↻ {format(lastUpdate,'HH:mm')}</span>
           </div>
         </div>
@@ -893,7 +896,95 @@ export default function App() {
           </>
         )}
       </div>
+      {/* MEETING PANEL */}
+      {meetingPanel && (
+        <div style={{position:'fixed',inset:0,zIndex:300,display:'flex'}} onClick={()=>{setMeetingPanel(false);setMeetingPanelCall(null);}}>
+          <div style={{marginLeft:'auto',width:560,background:C.surface,height:'100%',overflow:'auto',boxShadow:'-8px 0 40px rgba(0,0,0,0.15)'}} onClick={e=>e.stopPropagation()}>
+            <div style={{padding:'20px 24px',borderBottom:`1px solid ${C.border}`,display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,background:C.surface,zIndex:1}}>
+              <div style={{fontFamily:'Outfit',fontWeight:700,fontSize:14,color:C.brand}}>🎥 Spotkania wideo · {meetings.length}</div>
+              <button onClick={()=>{setMeetingPanel(false);setMeetingPanelCall(null);}} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:C.text3,lineHeight:1}}>×</button>
+            </div>
+            <div style={{padding:'16px 24px'}}>
+              {meetings.map(m => (
+                <div key={m.id} style={{marginBottom:12,border:`1px solid ${meetingPanelCall?.id===m.id?C.brand:C.border}`,borderRadius:12,overflow:'hidden',cursor:'pointer'}} onClick={()=>setMeetingPanelCall(meetingPanelCall?.id===m.id?null:m)}>
+                  <div style={{padding:'12px 16px',display:'flex',alignItems:'center',gap:10,background:meetingPanelCall?.id===m.id?C.brandLight:C.surface}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13,fontWeight:600,marginBottom:2}}>{m.klient||'—'}</div>
+                      <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                        <span style={{fontSize:10,color:m.manager==='Beata Janoszka'?C.beata:C.kamil,fontFamily:'DM Mono',fontWeight:600}}>{m.manager==='Beata Janoszka'?'Beata':'Kamil'}</span>
+                        <span style={{fontSize:10,color:C.text3,fontFamily:'DM Mono'}}>{m.call_time?format(parseISO(m.call_time),'dd.MM.yyyy HH:mm'):''}</span>
+                        {m.wynik_procentowy!=null&&<span style={{fontSize:10,fontFamily:'DM Mono',fontWeight:700,color:m.wynik_procentowy>=70?C.green:m.wynik_procentowy>=40?C.amber:C.red}}>{m.wynik_procentowy}%</span>}
+                        {m.sukces_poziom&&<span style={{fontSize:10,fontFamily:'DM Mono',color:m.sukces_poziom==='sukces'?C.green:m.sukces_poziom==='czesciowy'?C.amber:C.red}}>{m.sukces_poziom==='sukces'?'✓ Sukces':m.sukces_poziom==='czesciowy'?'⚠ Częściowy':'✗ Porażka'}</span>}
+                      </div>
+                    </div>
+                    <span style={{fontSize:11,color:C.text3}}>{meetingPanelCall?.id===m.id?'▲':'▼'}</span>
+                  </div>
+                  {meetingPanelCall?.id===m.id && <NotatkaPanel meeting={m} C={C} format={format} parseISO={parseISO}/>}
+                </div>
+              ))}
+              {meetings.length===0&&<div style={{textAlign:'center',padding:40,color:C.text3,fontFamily:'DM Mono'}}>Brak spotkań w tym okresie</div>}
+            </div>
+          </div>
+        </div>
+      )}
       <footer style={{ textAlign:'center', fontSize:11, color:C.text3, fontFamily:'DM Mono', padding:'20px 0 40px', borderTop:`1px solid ${C.border}` }}>NOWIMA · Analytics · auto-refresh co 5 min</footer>
+    </div>
+  );
+}
+
+function NotatkaPanel({meeting, C, format, parseISO}) {
+  const [copied, setCopied] = React.useState(false);
+  const mgr = meeting.manager==='Beata Janoszka'?'Beata Janoszka':'Kamil Wisniewski';
+  const date = meeting.call_time ? format(parseISO(meeting.call_time),'dd.MM.yyyy HH:mm') : '—';
+  const dur = meeting.duration ? `${Math.floor(meeting.duration/60)}:${String(meeting.duration%60).padStart(2,'0')}` : '—';
+  const lines = [
+    'NOTATKA ZE SPOTKANIA',
+    '=====================',
+    `Data: ${date}`,
+    `Czas trwania: ${dur}`,
+    `Prowadzący: ${mgr}`,
+    `Klient: ${meeting.klient||'—'}`,
+    '',
+    'PRZEBIEG SPOTKANIA',
+    '------------------',
+    meeting.outcome||'—',
+    '',
+    ...(meeting.cytat_klienta ? [`Kluczowy cytat klienta: "${meeting.cytat_klienta}"`, ''] : []),
+    ...(meeting.obiekcja ? [`Obiekcja klienta: ${meeting.obiekcja}`, ''] : []),
+    'WNIOSKI I OCENA',
+    '---------------',
+    meeting.powod_sukcesu||'—',
+    ...(meeting.do_poprawy ? ['', `Do poprawy: ${meeting.do_poprawy}`] : []),
+    '',
+    'NASTĘPNE KROKI',
+    '--------------',
+    meeting.akcja||'—',
+    '',
+    `STATUS: ${meeting.sukces_poziom==='sukces'?'✅ Sukces':meeting.sukces_poziom==='czesciowy'?'⚠️ Częściowy sukces':'❌ Do poprawy'}`,
+    ...(meeting.wynik_procentowy!=null ? [`Ocena: ${meeting.wynik_procentowy}%`] : []),
+  ];
+  const notatka = lines.join('\n');
+  const copy = () => { navigator.clipboard.writeText(notatka).then(()=>{ setCopied(true); setTimeout(()=>setCopied(false),2000); }); };
+  return (
+    <div style={{padding:'16px 20px',background:C.surface2,borderTop:`1px solid ${C.border}`}}>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
+        <div>
+          {meeting.outcome&&<div style={{fontSize:12,color:C.text2,lineHeight:1.5,marginBottom:6}}>📌 {meeting.outcome}</div>}
+          {meeting.cytat_klienta&&<div style={{fontSize:12,color:C.text2,fontStyle:'italic',marginBottom:6}}>💬 "{meeting.cytat_klienta}"</div>}
+          {meeting.obiekcja&&<div style={{fontSize:12,color:C.red,marginBottom:4}}>🛑 {meeting.obiekcja}</div>}
+        </div>
+        <div>
+          {meeting.akcja&&<div style={{fontSize:12,color:C.green,lineHeight:1.5,marginBottom:6,paddingLeft:8,borderLeft:`2px solid ${C.green}`}}>→ {meeting.akcja}</div>}
+          {meeting.do_poprawy&&<div style={{fontSize:11,color:C.amber,lineHeight:1.4,padding:'5px 8px',background:C.amberLight,borderRadius:6}}>📈 {meeting.do_poprawy}</div>}
+        </div>
+      </div>
+      <div style={{marginBottom:10}}>
+        <div style={{fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',color:C.text3,marginBottom:6}}>Podgląd notatki</div>
+        <div style={{fontSize:11,color:C.text2,lineHeight:1.7,background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:'10px 14px',maxHeight:200,overflowY:'auto',fontFamily:'DM Mono',whiteSpace:'pre-wrap'}}>{notatka}</div>
+      </div>
+      <button onClick={copy} style={{width:'100%',padding:'9px',borderRadius:8,background:copied?C.green:C.brand,color:copied?'white':C.lime,border:'none',cursor:'pointer',fontFamily:'Outfit',fontWeight:600,fontSize:12,transition:'background 0.2s'}}>
+        {copied ? '✓ Skopiowano!' : '📋 Kopiuj notatkę'}
+      </button>
     </div>
   );
 }

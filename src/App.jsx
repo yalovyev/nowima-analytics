@@ -79,9 +79,10 @@ function LoginScreen({onLogin}) {
     e.preventDefault();
     const user = USERS[login.toLowerCase().trim()];
     if (user && user.password === pwd) {
+      localStorage.clear();
       localStorage.setItem('nowima_auth','1');
       localStorage.setItem('nowima_role', user.role);
-      onLogin();
+      window.location.reload();
     } else {
       setError(true);
       setPwd('');
@@ -120,11 +121,9 @@ function LoginScreen({onLogin}) {
 
 export default function App() {
   const [auth, setAuth] = React.useState(() => {
-    const hasAuth = localStorage.getItem('nowima_auth') === '1';
-    const hasRole = localStorage.getItem('nowima_role');
-    return hasAuth && hasRole;
+    return localStorage.getItem('nowima_auth') === '1';
   });
-  const [role] = React.useState(() => localStorage.getItem('nowima_role') || '');
+  const [role] = React.useState(() => localStorage.getItem('nowima_role') || 'admin');
   const [allData, setAllData] = useState([]);
   const [prevData, setPrevData] = useState([]);
   const [companies, setCompanies] = useState([]);
@@ -136,7 +135,7 @@ export default function App() {
   const [customEnd, setCustomEnd] = useState('');
   const [showCalendar, setShowCalendar] = useState(false);
   const [mgr, setMgr] = useState(() => {
-    const r = localStorage.getItem('nowima_role') || '';
+    const r = localStorage.getItem('nowima_role') || 'admin';
     if (r === 'beata') return 'beata';
     if (r === 'kamil') return 'kamil';
     return 'all';
@@ -378,7 +377,7 @@ export default function App() {
               ))}
             </div>
           )}
-          {role !== 'admin' && (
+          {(role === 'beata' || role === 'kamil') && (
             <div style={{ fontSize:11, fontFamily:'DM Mono', color:C.lime, padding:'4px 12px', borderRadius:20, border:`1px solid ${C.lime}`, background:'rgba(209,233,37,0.15)' }}>
               {role === 'beata' ? 'Beata Janoszka' : 'Kamil Wisniewski'}
             </div>

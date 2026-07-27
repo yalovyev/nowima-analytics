@@ -1099,7 +1099,7 @@ Wypełnij raport zgodnie z instrukcjami. Każda informacja pojawia się tylko ra
                     if (line.startsWith('---')) return <hr key={i} style={{border:'none',borderTop:'1px solid #E8E4DC',margin:'8px 0'}}/>;
                     if (line.startsWith('| ')) {
                       const cells = line.split('|').filter(c=>c.trim()).map(c=>c.trim());
-                      const isSep = cells.every(c=>/^[-:\s|]+$/.test(c));
+                      const isSep = cells.every(c=>c.replace(/[-:\s]/g,'').length===0);
                       if (isSep) return null;
                       const isHeader = i > 0 && raport.split('\n')[i+1]?.includes('---');
                       return <div key={i} style={{display:'grid',gridTemplateColumns:`repeat(${cells.length},1fr)`,gap:0,borderBottom:'1px solid #E8E4DC'}}>

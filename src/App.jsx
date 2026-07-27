@@ -1047,7 +1047,7 @@ Akcja: ${data.akcja || '—'}
 Obiekcja: ${data.obiekcja || '—'}
 
 TRANSKRYPT:
-${transcript.substring(0, 6000)}
+${transcript.substring(0, 3000)}
 
 WYPEŁNIJ SZABLON:
 

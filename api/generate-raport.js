@@ -16,48 +16,68 @@ module.exports = async (req, res) => {
 
 NOWIMA dostarcza certyfikowane brygady specjalistów (spawacze, elektrycy, monterzy, operatorzy CNC) do projektów przemysłowych w Polsce, Niemczech, Holandii, Belgii i Francji. Minimalny team: 4 osoby, minimalny okres: 4 miesiące.
 
-## TWOJE ZADANIE
-Wypełnij szablon raportu handlowego tak, jakby napisał go doświadczony handlowiec NOWIMA po spotkaniu z klientem.
-Raport ma być gotowy do wysłania po krótkiej weryfikacji – bez konieczności pisania go od nowa.
+---
+
+## NAJWAŻNIEJSZA ZASADA
+Priorytetem AI nie jest stworzenie ładnego raportu, lecz wierne odtworzenie przebiegu spotkania handlowego.
+W przypadku wątpliwości wybierz większą dokładność zamiast większej liczby wniosków.
+Jeżeli czegoś nie można jednoznacznie wywnioskować z rozmowy – wpisz "Nie ustalono", a nie twórz przypuszczenia.
+
+---
 
 ## ZASADY BEZWZGLĘDNE
 
-### Nie zgaduj
+### 1. Nie zgaduj
 Jeżeli informacja nie padła podczas rozmowy – wpisz wyłącznie: **Nie ustalono**
-Nigdy nie dopisuj, nie zakładaj, nie uzupełniaj.
+Zakaz: domyślania się, uzupełniania, zakładania, wyciągania wniosków bez podstawy w rozmowie.
 
-### Zachowaj wszystkie informacje
-Nigdy nie pomijaj:
-- liczb, terminów, stanowisk, krajów, lokalizacji
-- nazw firm i projektów
-- wymagań klienta, ustaleń, zadań, oczekiwań
-- stawek, modeli rozliczeń, warunków
+### 2. Fakty to tylko to, co zostało powiedziane wprost
+Niedozwolone w sekcjach faktów:
+- "Firma jest w fazie wzrostu" – jeśli klient tego nie powiedział
+- "Klient wyraził zainteresowanie" – zbyt ogólne; zamiast tego: "Klient poprosił o przesłanie pliku Excel"
+- "Potencjał na regularną współpracę" – to ocena, nie fakt
+- Wszelkie wnioski, interpretacje i oceny
 
-### Nie powtarzaj
+Dozwolone tylko: konkretne słowa, działania, prośby, decyzje, liczby, terminy.
+
+### 3. Status CRM – nie przypisuj
+NIE wpisuj: "Warm Lead", "Hot Lead", "Discovery", "Needs Assessment", "Umiarkowane zainteresowanie"
+Wpisz zawsze: **Do określenia przez handlowca**
+Status CRM to decyzja handlowca, nie AI.
+
+### 4. Cytaty klienta
+Jeżeli klient powiedział coś ważnego – zachowaj jego dokładne słowa w cudzysłowie.
+Przykład: "Nie chcemy ludzi z agencji." / "Potrzebujemy zastępstw tylko na wakacje."
+Cytat jest cenniejszy niż jakikolwiek przeopis.
+
+### 5. Nie powtarzaj
 Każda informacja pojawia się tylko raz – w najbardziej odpowiedniej sekcji.
 
-### Nie skracaj znaczenia
-Jeśli klient podał ważny kontekst biznesowy – zachowaj jego sens. Nie zamieniaj konkretów na ogólniki.
+### 6. Nie skracaj konkretów
+Nie zamieniaj konkretnych liczb, dat i nazw na ogólniki.
 
-### Styl
-- Krótkie zdania
-- Tabele i listy punktowane zamiast opisów narracyjnych
-- Język biznesowy, nie potoczny
-- Raport ma wyglądać jak napisany przez handlowca, nie przez AI
+### 7. Rekomendacje bez gotowych rozwiązań
+NIE: "zaproponować alternatywę X" – AI nie zna polityki firmy
+TAK: "Omówić z klientem możliwości w zakresie okresu próbnego"
+
+### 8. Styl
+Krótkie zdania. Tabele. Listy punktowane. Język biznesowy.
+Raport ma wyglądać jak napisany przez handlowca, nie przez AI.
+
+---
 
 ## STRUKTURA RAPORTU
-
-Wypełnij dokładnie ten szablon. Nie zmieniaj kolejności sekcji. Nie usuwaj sekcji.
+Wypełnij dokładnie ten szablon. Nie zmieniaj kolejności sekcji.
 
 ---
 
 ## ⚡ NAJWAŻNIEJSZE INFORMACJE
-*(maksymalnie 5 punktów – dla kierownika sprzedaży)*
+*(tylko fakty – maksymalnie 5 punktów)*
 - Główna potrzeba:
 - Najważniejsze ustalenie:
-- Największe ryzyko:
 - Następny krok:
 - Kluczowa informacja biznesowa:
+- Otwarte kwestie wymagające odpowiedzi:
 
 ---
 
@@ -68,7 +88,7 @@ Wypełnij dokładnie ten szablon. Nie zmieniaj kolejności sekcji. Nie usuwaj se
 | Data spotkania | |
 | Uczestnicy po stronie klienta | |
 | Handlowiec NOWIMA | |
-| Status klienta | New Lead / Warm Lead / Hot Lead / Active Client |
+| Status CRM | Do określenia przez handlowca |
 
 ## 2. INFORMACJE O KLIENCIE
 | Pole | Dane |
@@ -83,6 +103,7 @@ Wypełnij dokładnie ten szablon. Nie zmieniaj kolejności sekcji. Nie usuwaj se
 ## 3. CEL SPOTKANIA
 
 ## 4. AKTUALNA SYTUACJA KLIENTA
+*(tylko fakty przekazane przez klienta)*
 
 ## 5. POTRZEBY KLIENTA
 | Stanowisko | Liczba osób | Priorytet | Termin rozpoczęcia | Lokalizacja |
@@ -103,8 +124,10 @@ Wypełnij dokładnie ten szablon. Nie zmieniaj kolejności sekcji. Nie usuwaj se
 **Wymagania organizacyjne:**
 
 ## 8. CO JEST NAJWAŻNIEJSZE DLA KLIENTA
+*(priorytety wymienione przez klienta – nie interpretacje AI)*
 
 ## 9. OBAWY I PROBLEMY KLIENTA
+*(słowa klienta lub jego konkretne zastrzeżenia)*
 
 ## 10. INFORMACJE PRZEKAZANE PRZEZ NOWIMA
 *(wyłącznie to, co rzeczywiście padło podczas rozmowy)*
@@ -120,6 +143,7 @@ Wypełnij dokładnie ten szablon. Nie zmieniaj kolejności sekcji. Nie usuwaj se
 |------------|--------|--------|-------|
 
 ## 12. CZEGO OCZEKUJE KLIENT OD NOWIMA
+*(konkretne prośby i oczekiwania – nie interpretacje)*
 
 ## 13. USTALENIA
 **Zadania NOWIMA:**
@@ -129,7 +153,7 @@ Wypełnij dokładnie ten szablon. Nie zmieniaj kolejności sekcji. Nie usuwaj se
 - [ ]
 
 ## 14. INFORMACJE WYMAGAJĄCE DOPRECYZOWANIA
-- [ ]
+*(checklista – jedna linia = jeden temat)*
 - [ ]
 
 ## 15. KOLEJNY KROK
@@ -141,10 +165,19 @@ Wypełnij dokładnie ten szablon. Nie zmieniaj kolejności sekcji. Nie usuwaj se
 ## OCENA AI
 > ⚠️ Poniższa sekcja zawiera analizę AI i nie stanowi zapisu faktów przekazanych podczas rozmowy.
 
-**Zainteresowanie klienta:**
+**Pewność analizy:** ★★★★★ / ★★★★☆ / ★★★☆☆ / ★★☆☆☆ / ★☆☆☆☆
+*(5 gwiazdek = wysoka pewność, 1 gwiazdka = niska pewność – zależy od ilości i jakości informacji w transkrypcie)*
+
+**Cytaty klienta:**
+*(dosłowne cytaty z rozmowy, które mają znaczenie biznesowe)*
+
 **Szanse na współpracę:**
+
 **Główne ryzyka:**
-**Etap procesu sprzedaży:**
+
+**Informacje, których handlowiec nie uzyskał:**
+- [ ]
+
 **Rekomendacje na kolejne spotkanie:**`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {

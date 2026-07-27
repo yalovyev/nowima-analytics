@@ -129,6 +129,9 @@ export default function App() {
   const [portfolioPage, setPortfolioPage] = useState(0);
   const [meetingPanel, setMeetingPanel] = useState(false);
   const [meetingPanelCall, setMeetingPanelCall] = useState(null);
+  const [leadsCollapsed, setLeadsCollapsed] = useState(false);
+  const [listCollapsed, setListCollapsed] = useState(false);
+  const [listTab, setListTab] = useState('calls');
   const PAGE_SIZE = 100;
 
   const getRange = useCallback((offset = 0) => {
@@ -664,57 +667,79 @@ export default function App() {
                   </div>
                 )}
 
-                {/* Hot leads */}
+                {/* Hot leads - collapsible */}
                 {[...hot, ...pilne.filter(c=>c.wynik!=='gorący lead')].length > 0 && (
                   <div style={{ marginBottom:24 }}>
-                    <SectionHeader icon="🔥" title="Gorące leady i pilne działania" badge={[...hot,...pilne.filter(c=>c.wynik!=='gorący lead')].length}/>
-                    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                      {[...hot,...pilne.filter(c=>c.wynik!=='gorący lead')].map(c => (
-                        <LeadCard key={c.id} call={c} onOpen={() => setActiveCall(c.id)}/>
-                      ))}
+                    <div onClick={() => setLeadsCollapsed(v=>!v)} style={{ display:'flex', alignItems:'center', gap:10, marginBottom: leadsCollapsed ? 0 : 12, cursor:'pointer', userSelect:'none' }}>
+                      <span style={{fontSize:14}}>🔥</span>
+                      <span style={{fontFamily:'Outfit',fontWeight:700,fontSize:11,textTransform:'uppercase',letterSpacing:'0.12em',color:C.brand}}>Gorące leady i pilne działania</span>
+                      <div style={{flex:1,height:1,background:C.border}}/>
+                      <span style={{fontSize:10,fontFamily:'DM Mono',padding:'2px 8px',borderRadius:20,background:C.brandLight,color:C.brand,border:`1px solid ${C.brandBorder}`}}>{[...hot,...pilne.filter(c=>c.wynik!=='gorący lead')].length}</span>
+                      <span style={{fontSize:11,color:C.text3,display:'inline-block',marginLeft:2}}>{leadsCollapsed?'›':'▼'}</span>
                     </div>
+                    {!leadsCollapsed && (
+                      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                        {[...hot,...pilne.filter(c=>c.wynik!=='gorący lead')].map(c => (
+                          <LeadCard key={c.id} call={c} onOpen={() => setActiveCall(c.id)}/>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* Meetings */}
-                {meetings.length > 0 && (
-                  <div style={{ marginBottom:24 }}>
-                    <SectionHeader icon="🎥" title="Spotkania wideo" badge={meetings.length}/>
-                    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                      {meetings.map(m => <MeetingCard key={m.id} meeting={m} isOpen={activeCall===m.id} onToggle={() => setActiveCall(activeCall===m.id?null:m.id)}/>)}
-                    </div>
-                  </div>
-                )}
-
-                {/* Call list */}
+                {/* Call list - collapsible with tabs */}
                 <div>
-                  <div style={{ display:'flex', gap:10, marginBottom:14, flexWrap:'wrap', alignItems:'center' }}>
-                    <SectionHeader icon="📞" title="Lista rozmów" badge={filtered.length}/>
-                    <div style={{ display:'flex', gap:6, marginLeft:'auto', flexWrap:'wrap' }}>
-                      <input type="text" placeholder="🔍 Szukaj klienta..." value={search} onChange={e=>setSearch(e.target.value)} style={{ padding:'7px 14px', borderRadius:20, border:`1px solid ${C.border}`, background:C.surface, fontSize:12, fontFamily:'DM Sans', outline:'none', minWidth:200 }}/>
-                      <select value={callTypeFilter} onChange={e=>setCallTypeFilter(e.target.value)} style={{ padding:'7px 12px', borderRadius:20, border:`1px solid ${C.border}`, background:C.surface, fontSize:12, fontFamily:'DM Mono', outline:'none', cursor:'pointer' }}>
-                        <option value="all">Wszystkie typy</option>
-                        <option value="hot">🔥 Gorące leady</option>
-                        <option value="lpr">🎯 Z ŁPR</option>
-                        <option value="pilne">⚠️ Pilne</option>
-                        <option value="zimny_telefon">❄️ Zimne telefony</option>
-                        <option value="sekretariat">📋 Sekretariat</option>
-                        <option value="kontakt_z_lpr">🎯 Kontakt z ŁPR</option>
-                        <option value="followup_po_materialach">📨 Follow-up z mat.</option>
-                        <option value="followup_bez_materialow">🔄 Follow-up</option>
-                        <option value="operacyjny">⚙️ Operacyjne</option>
-                        <option value="bot_niedozwon">🤖 Bot/niedozwon</option>
-                      </select>
-                    </div>
+                  <div onClick={() => setListCollapsed(v=>!v)} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14, cursor:'pointer', userSelect:'none' }}>
+                    <span style={{fontSize:14}}>📋</span>
+                    <span style={{fontFamily:'Outfit',fontWeight:700,fontSize:11,textTransform:'uppercase',letterSpacing:'0.12em',color:C.brand}}>Lista rozmów</span>
+                    <div style={{flex:1,height:1,background:C.border}}/>
+                    <span style={{fontSize:10,fontFamily:'DM Mono',padding:'2px 8px',borderRadius:20,background:C.brandLight,color:C.brand,border:`1px solid ${C.brandBorder}`}}>{phoneCalls.length + meetings.length}</span>
+                    <span style={{fontSize:11,color:C.text3,display:'inline-block',marginLeft:2}}>{listCollapsed?'›':'▼'}</span>
                   </div>
-                  <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                    {filtered.map(call => (
-                      call.sip === 'meeting'
-                        ? <MeetingCard key={call.id} meeting={call} isOpen={activeCall===call.id} onToggle={() => setActiveCall(activeCall===call.id?null:call.id)}/>
-                        : <CallDetail key={call.id} call={call} isOpen={activeCall===call.id} onToggle={() => setActiveCall(activeCall===call.id?null:call.id)}/>
-                    ))}
-                    {filtered.length === 0 && <div style={{ textAlign:'center', padding:40, color:C.text3, fontFamily:'DM Mono', fontSize:13 }}>Brak rozmów spełniających kryteria</div>}
-                  </div>
+                  {!listCollapsed && (
+                    <>
+                      <div style={{ display:'flex', marginBottom:14, borderRadius:8, overflow:'hidden', border:`1px solid ${C.border}`, width:'fit-content' }}>
+                        <button onClick={()=>setListTab('calls')} style={{ padding:'8px 18px', border:'none', cursor:'pointer', fontSize:12, fontFamily:'DM Mono', background:listTab==='calls'?C.brand:C.surface, color:listTab==='calls'?'white':C.text2 }}>
+                          {'📞 Telefony · ' + phoneCalls.length}
+                        </button>
+                        <button onClick={()=>setListTab('meetings')} style={{ padding:'8px 18px', border:'none', borderLeft:`1px solid ${C.border}`, cursor:'pointer', fontSize:12, fontFamily:'DM Mono', background:listTab==='meetings'?C.blue:C.surface, color:listTab==='meetings'?'white':C.text2 }}>
+                          {'🎥 Spotkania · ' + meetings.length}
+                        </button>
+                      </div>
+                      {listTab === 'calls' && (
+                        <>
+                          <div style={{ display:'flex', gap:6, marginBottom:12, flexWrap:'wrap' }}>
+                            <input type="text" placeholder="🔍 Szukaj klienta..." value={search} onChange={e=>setSearch(e.target.value)} style={{ padding:'7px 14px', borderRadius:20, border:`1px solid ${C.border}`, background:C.surface, fontSize:12, fontFamily:'DM Sans', outline:'none', minWidth:180 }}/>
+                            <select value={callTypeFilter} onChange={e=>setCallTypeFilter(e.target.value)} style={{ padding:'7px 12px', borderRadius:20, border:`1px solid ${C.border}`, background:C.surface, fontSize:12, fontFamily:'DM Mono', outline:'none', cursor:'pointer' }}>
+                              <option value="all">Wszystkie typy</option>
+                              <option value="hot">🔥 Gorące leady</option>
+                              <option value="lpr">🎯 Z ŁPR</option>
+                              <option value="pilne">⚠️ Pilne</option>
+                              <option value="zimny_telefon">❄️ Zimne telefony</option>
+                              <option value="sekretariat">📋 Sekretariat</option>
+                              <option value="kontakt_z_lpr">🎯 Kontakt z ŁPR</option>
+                              <option value="followup_po_materialach">📨 Follow-up z mat.</option>
+                              <option value="followup_bez_materialow">🔄 Follow-up</option>
+                              <option value="operacyjny">⚙️ Operacyjne</option>
+                              <option value="bot_niedozwon">🤖 Bot/niedozwon</option>
+                            </select>
+                          </div>
+                          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                            {filtered.filter(c=>c.sip!=='meeting').map(call => (
+                              <CallDetail key={call.id} call={call} isOpen={activeCall===call.id} onToggle={() => setActiveCall(activeCall===call.id?null:call.id)}/>
+                            ))}
+                            {filtered.filter(c=>c.sip!=='meeting').length === 0 && <div style={{ textAlign:'center', padding:40, color:C.text3, fontFamily:'DM Mono', fontSize:13 }}>Brak rozmów spełniających kryteria</div>}
+                          </div>
+                        </>
+                      )}
+                      {listTab === 'meetings' && (
+                        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                          {meetings.map(m => <MeetingCard key={m.id} meeting={m} isOpen={activeCall===m.id} onToggle={() => setActiveCall(activeCall===m.id?null:m.id)}/>)}
+                          {meetings.length === 0 && <div style={{ textAlign:'center', padding:40, color:C.text3, fontFamily:'DM Mono', fontSize:13 }}>Brak spotkań w tym okresie</div>}
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </>
             )}

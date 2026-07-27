@@ -1379,7 +1379,7 @@ function MeetingCard({meeting,isOpen,onToggle}){
         <div style={{fontSize:13,fontWeight:500}}>{meeting.klient||'—'}</div>
         <div style={{fontFamily:'DM Mono',fontSize:11,color:'#A09890'}}>{meeting.call_time?format(parseISO(meeting.call_time),'dd.MM HH:mm'):''}</div>
         {pct!=null&&<div style={{fontFamily:'DM Mono',fontWeight:700,fontSize:12,color:pct>=70?'#1A7A4A':pct>=40?'#C07A1A':'#C0392B'}}>{pct}%</div>}
-        {sukces&&<span style={{fontSize:10,padding:'2px 8px',borderRadius:20,fontFamily:'DM Mono',background:sukBg,color:sukColor,border:`1px solid ${sukColor}30`}}>{sukses==='sukces'?'✓ Sukces':sukses==='czesciowy'?'⚠ Częściowy':'✗ Porażka'}</span>}
+        {sukces&&<span style={{fontSize:10,padding:'2px 8px',borderRadius:20,fontFamily:'DM Mono',background:sukBg,color:sukColor,border:`1px solid ${sukColor}30`}}>{sukces==='sukces'?'✓ Sukces':sukces==='czesciowy'?'⚠ Częściowy':'✗ Porażka'}</span>}
         <div style={{color:'#A09890',fontSize:12,textAlign:'center',transition:'transform 0.2s',transform:isOpen?'rotate(180deg)':'none'}}>▼</div>
       </div>
       {isOpen&&(
@@ -1474,7 +1474,7 @@ function CallDetail({call,isOpen,onToggle}){
         <div style={{fontSize:13,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{call.klient||'—'}</div>
         <div style={{fontFamily:'DM Mono',fontSize:11,color:'#A09890'}}>{durStr}</div>
         {!isBotOrOp&&pct!=null&&<div style={{fontFamily:'DM Mono',fontWeight:700,fontSize:12,color:pct>=70?'#1A7A4A':pct>=40?'#C07A1A':'#C0392B',minWidth:34,textAlign:'right'}}>{pct}%</div>}
-        {!isBotOrOp&&sukces&&<span style={{fontSize:10,padding:'2px 8px',borderRadius:20,fontFamily:'DM Mono',background:sukBg,color:sukColor,border:`1px solid ${sukColor}30`}}>{sukses==='sukces'?'✓':sukses==='czesciowy'?'⚠':'✗'}</span>}
+        {!isBotOrOp&&sukces&&<span style={{fontSize:10,padding:'2px 8px',borderRadius:20,fontFamily:'DM Mono',background:sukBg,color:sukColor,border:`1px solid ${sukColor}30`}}>{sukces==='sukces'?'✓':sukces==='czesciowy'?'⚠':'✗'}</span>}
         {isBotOrOp&&<span style={{fontSize:10,padding:'2px 8px',borderRadius:20,fontFamily:'DM Mono',background:'#F9F8F5',color:'#A09890',border:'1px solid #E8E4DC'}}>{typ==='bot_niedozwon'?'bot':'op.'}</span>}
         <div style={{color:'#A09890',fontSize:11,textAlign:'center',transition:'transform 0.2s',transform:isOpen?'rotate(180deg)':'none'}}>▼</div>
       </div>

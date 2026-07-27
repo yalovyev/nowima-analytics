@@ -64,22 +64,29 @@ function md5(str) {
   return Math.abs(hash).toString(16).padStart(8, '0');
 }
 
-const PASSWORDS = {
-  'nowima2026': 'admin',
-  'beata2026': 'beata',
-  'kamil2026': 'kamil',
+const USERS = {
+  'nowima': { password: 'dCfsWvbqERta', role: 'admin' },
+  'beata':  { password: 'NgsiKwjjrt7Y', role: 'beata' },
+  'kamil':  { password: 's7qD8FYGn1TT', role: 'kamil' },
 };
-const APP_PASSWORD = process.env.REACT_APP_PASSWORD || 'nowima2026';
 
 function LoginScreen({onLogin}) {
+  const [login, setLogin] = React.useState('');
   const [pwd, setPwd] = React.useState('');
   const [error, setError] = React.useState(false);
   const [show, setShow] = React.useState(false);
   const handle = (e) => {
     e.preventDefault();
-    const role = PASSWORDS[pwd];
-    if (role) { localStorage.setItem('nowima_auth','1'); localStorage.setItem('nowima_role', role); onLogin(); }
-    else { setError(true); setPwd(''); setTimeout(()=>setError(false),2000); }
+    const user = USERS[login.toLowerCase().trim()];
+    if (user && user.password === pwd) {
+      localStorage.setItem('nowima_auth','1');
+      localStorage.setItem('nowima_role', user.role);
+      onLogin();
+    } else {
+      setError(true);
+      setPwd('');
+      setTimeout(()=>setError(false),2000);
+    }
   };
   return (
     <div style={{minHeight:'100vh',background:'#5A171E',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'DM Sans',sans-serif"}}>
@@ -91,13 +98,18 @@ function LoginScreen({onLogin}) {
         </div>
         <form onSubmit={handle}>
           <div style={{marginBottom:16}}>
+            <div style={{fontSize:11,fontFamily:'DM Mono',color:'#6B6560',marginBottom:6,textTransform:'uppercase',letterSpacing:'0.08em'}}>Login</div>
+            <input type="text" value={login} onChange={e=>setLogin(e.target.value)} placeholder="Wpisz login..." autoFocus
+              style={{width:'100%',padding:'12px 14px',borderRadius:8,border:`1px solid ${error?'#C0392B':'#E8E4DC'}`,fontSize:14,outline:'none',boxSizing:'border-box',background:error?'#FEF2F0':'#FFF'}}/>
+          </div>
+          <div style={{marginBottom:20}}>
             <div style={{fontSize:11,fontFamily:'DM Mono',color:'#6B6560',marginBottom:6,textTransform:'uppercase',letterSpacing:'0.08em'}}>Hasło</div>
             <div style={{position:'relative'}}>
-              <input type={show?'text':'password'} value={pwd} onChange={e=>setPwd(e.target.value)} placeholder="Wpisz hasło..." autoFocus
+              <input type={show?'text':'password'} value={pwd} onChange={e=>setPwd(e.target.value)} placeholder="Wpisz hasło..."
                 style={{width:'100%',padding:'12px 40px 12px 14px',borderRadius:8,border:`1px solid ${error?'#C0392B':'#E8E4DC'}`,fontSize:14,outline:'none',boxSizing:'border-box',background:error?'#FEF2F0':'#FFF'}}/>
               <button type="button" onClick={()=>setShow(s=>!s)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:16,color:'#A09890'}}>{show?'🙈':'👁'}</button>
             </div>
-            {error&&<div style={{fontSize:11,color:'#C0392B',marginTop:6,fontFamily:'DM Mono'}}>Nieprawidłowe hasło</div>}
+            {error&&<div style={{fontSize:11,color:'#C0392B',marginTop:6,fontFamily:'DM Mono'}}>Nieprawidłowy login lub hasło</div>}
           </div>
           <button type="submit" style={{width:'100%',padding:'13px',borderRadius:8,background:'#5A171E',color:'#D1E925',border:'none',cursor:'pointer',fontFamily:'Outfit',fontWeight:700,fontSize:14,letterSpacing:1}}>ZALOGUJ</button>
         </form>
@@ -107,8 +119,12 @@ function LoginScreen({onLogin}) {
 }
 
 export default function App() {
-  const [auth, setAuth] = React.useState(() => localStorage.getItem('nowima_auth') === '1');
-  const [role] = React.useState(() => localStorage.getItem('nowima_role') || 'admin');
+  const [auth, setAuth] = React.useState(() => {
+    const hasAuth = localStorage.getItem('nowima_auth') === '1';
+    const hasRole = localStorage.getItem('nowima_role');
+    return hasAuth && hasRole;
+  });
+  const [role] = React.useState(() => localStorage.getItem('nowima_role') || '');
   const [allData, setAllData] = useState([]);
   const [prevData, setPrevData] = useState([]);
   const [companies, setCompanies] = useState([]);
@@ -120,7 +136,7 @@ export default function App() {
   const [customEnd, setCustomEnd] = useState('');
   const [showCalendar, setShowCalendar] = useState(false);
   const [mgr, setMgr] = useState(() => {
-    const r = localStorage.getItem('nowima_role') || 'admin';
+    const r = localStorage.getItem('nowima_role') || '';
     if (r === 'beata') return 'beata';
     if (r === 'kamil') return 'kamil';
     return 'all';
@@ -182,17 +198,24 @@ export default function App() {
   }, [companies.length]);
 
   useEffect(() => { fetchData(); const i = setInterval(fetchData, 5 * 60 * 1000); return () => clearInterval(i); }, [fetchData]);
+  // Lock mgr filter for non-admin users
+  useEffect(() => {
+    if (role === 'beata') setMgr('beata');
+    if (role === 'kamil') setMgr('kamil');
+  }, [role]);
   useEffect(() => { if (view === 'portfolio') fetchCompanies(); }, [view, fetchCompanies]);
 
   // Filtered calls by manager + source
   const calls = useMemo(() => {
     let d = allData;
-    if (mgr === 'beata') d = d.filter(c => c.sip === '123' || c.manager === 'Beata Janoszka');
-    if (mgr === 'kamil') d = d.filter(c => c.sip === '119' || c.manager === 'Kamil Wisniewski' || c.manager === 'Kamil Wiśniewski');
+    // Role-based access control — non-admin sees only their own data regardless of mgr state
+    const effectiveMgr = role === 'beata' ? 'beata' : role === 'kamil' ? 'kamil' : mgr;
+    if (effectiveMgr === 'beata') d = d.filter(c => c.sip === '123' || c.manager === 'Beata Janoszka');
+    if (effectiveMgr === 'kamil') d = d.filter(c => c.sip === '119' || c.manager === 'Kamil Wisniewski' || c.manager === 'Kamil Wiśniewski');
     if (source === 'calls') d = d.filter(c => c.sip !== 'meeting');
     if (source === 'meetings') d = d.filter(c => c.sip === 'meeting');
     return d;
-  }, [allData, mgr, source]);
+  }, [allData, mgr, source, role]);
 
   const phoneCalls = useMemo(() => calls.filter(c => c.sip !== 'meeting'), [calls]);
   const meetings = useMemo(() => calls.filter(c => c.sip === 'meeting'), [calls]);

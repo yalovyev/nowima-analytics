@@ -1253,9 +1253,13 @@ function MeetingCard({meeting,isOpen,onToggle}){
             <div>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
                 <div style={{fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',color:'#A09890'}}>Transkrypt</div>
-                <button onClick={()=>setShowDialog(d=>!d)} style={{fontSize:11,padding:'4px 10px',borderRadius:6,border:`1px solid ${showDialog?'#5A171E':'#E8E4DC'}`,background:showDialog?'#F4ECED':'#FFF',color:showDialog?'#5A171E':'#6B6560',cursor:'pointer',fontFamily:'DM Mono'}}>
-                  {showDialog?'✕ Ukryj':'💬 Pokaż dialog'}
-                </button>
+                <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                  <TranslateButton text={meeting.dialog||meeting.transcript} lang="pl"/>
+                  <TranslateButton text={meeting.dialog||meeting.transcript} lang="ru"/>
+                  <button onClick={()=>setShowDialog(d=>!d)} style={{fontSize:11,padding:'4px 10px',borderRadius:6,border:`1px solid ${showDialog?'#5A171E':'#E8E4DC'}`,background:showDialog?'#F4ECED':'#FFF',color:showDialog?'#5A171E':'#6B6560',cursor:'pointer',fontFamily:'DM Mono'}}>
+                    {showDialog?'✕ Ukryj':'💬 Pokaż dialog'}
+                  </button>
+                </div>
               </div>
               {showDialog?(
                 <DialogView text={meeting.dialog||meeting.transcript} mgr={mgr}/>
@@ -1353,9 +1357,13 @@ function CallDetail({call,isOpen,onToggle}){
                 <div>
                   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
                     <div style={{fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',color:'#A09890'}}>Transkrypt</div>
-                    <button onClick={()=>setShowDialog(d=>!d)} style={{fontSize:11,padding:'4px 10px',borderRadius:6,border:`1px solid ${showDialog?'#5A171E':'#E8E4DC'}`,background:showDialog?'#F4ECED':'#FFF',color:showDialog?'#5A171E':'#6B6560',cursor:'pointer',fontFamily:'DM Mono'}}>
-                      {showDialog?'✕ Ukryj':'💬 Dialog'}
-                    </button>
+                    <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                      <TranslateButton text={call.dialog||call.transcript} lang="pl"/>
+                      <TranslateButton text={call.dialog||call.transcript} lang="ru"/>
+                      <button onClick={()=>setShowDialog(d=>!d)} style={{fontSize:11,padding:'4px 10px',borderRadius:6,border:`1px solid ${showDialog?'#5A171E':'#E8E4DC'}`,background:showDialog?'#F4ECED':'#FFF',color:showDialog?'#5A171E':'#6B6560',cursor:'pointer',fontFamily:'DM Mono'}}>
+                        {showDialog?'✕ Ukryj':'💬 Dialog'}
+                      </button>
+                    </div>
                   </div>
                   {showDialog?(
                     <DialogView text={call.dialog||call.transcript} mgr={mgr}/>

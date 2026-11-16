@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, subWeeks, subMonths } from 'date-fns';
+import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, subWeeks, subMonths, isSunday } from 'date-fns';
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL || '';
 const ZADARMA_KEY = process.env.REACT_APP_ZADARMA_KEY || '';
@@ -168,7 +168,7 @@ export default function App() {
     switch (period) {
       case 'day': { const d = subDays(now, offset); const s = new Date(d); s.setHours(0,0,0,0); const e = new Date(d); e.setHours(23,59,59,999); return { start: s, end: e }; }
       case 'yesterday': { const d = subDays(now, 1 + offset); const s = new Date(d); s.setHours(0,0,0,0); const e = new Date(d); e.setHours(23,59,59,999); return { start: s, end: e }; }
-      case 'week': { const s = startOfWeek(subWeeks(now, offset), { weekStartsOn: 1 }); const e = endOfWeek(subWeeks(now, offset), { weekStartsOn: 1 }); return { start: s, end: e }; }
+      case 'week': { const anchor = isSunday(now) ? subDays(now, 1) : now; const s = startOfWeek(subWeeks(anchor, offset), { weekStartsOn: 1 }); const e = endOfWeek(subWeeks(anchor, offset), { weekStartsOn: 1 }); return { start: s, end: e }; }
       case 'month': { const s = startOfMonth(subMonths(now, offset)); const e = endOfMonth(subMonths(now, offset)); return { start: s, end: e }; }
       default: return { start: new Date('2024-01-01'), end: now };
     }

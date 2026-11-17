@@ -269,6 +269,8 @@ export default function App() {
 
   const beataPhone = phoneCalls.filter(c => c.sip === '123' || c.manager === 'Beata Janoszka');
   const kamilPhone = phoneCalls.filter(c => c.sip === '119' || c.manager === 'Kamil Wisniewski' || c.manager === 'Kamil Wiśniewski');
+  const vladPhone = phoneCalls.filter(c => c.sip === '130' || c.manager === 'Vladyslav Horishnyi');
+  const markPhone = phoneCalls.filter(c => c.sip === '131' || c.manager === 'Mark Fedorov');
 
   const avgPct = (arr) => { const v = arr.filter(c => c.wynik_procentowy != null).map(c => c.wynik_procentowy); return v.length ? Math.round(v.reduce((a,b)=>a+b,0)/v.length) : null; };
 
@@ -343,7 +345,7 @@ export default function App() {
             </div>
             <div style={{ padding:'20px' }}>
               <div style={{ fontSize:10, fontFamily:'DM Mono', textTransform:'uppercase', color:C.text3, marginBottom:10, letterSpacing:'0.08em' }}>Widok</div>
-              {[['calls','📞 Rozmowy'],['onboarding','⭐ TOP'],['portfolio','🏢 Portfel firm']].map(([v,label]) => (
+              {[['calls','📞 Rozmowy'],['onboarding','⭐ TOP'],['portfolio','🏢 Portfel firm'],['trainees','🌱 Nowi handlowcy']].map(([v,label]) => (
                 <div key={v} onClick={() => { setView(v); setSidebarOpen(false); }} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:8, marginBottom:4, cursor:'pointer', background:view===v ? C.brandLight : 'transparent', border:`1px solid ${view===v ? C.brandBorder : 'transparent'}` }}>
                   <div style={{ fontSize:12, fontWeight:500, color:view===v ? C.brand : C.text }}>{label}</div>
                   {view===v && <div style={{ marginLeft:'auto', color:C.brand, fontSize:12 }}>✓</div>}
@@ -959,6 +961,171 @@ export default function App() {
             )}
           </>
         )}
+
+            {/* ── TRAINEES VIEW ── */}
+            {view === 'trainees' && (
+              <>
+                <div style={{ marginBottom:20 }}>
+                  <div style={{ fontFamily:'Outfit', fontWeight:700, fontSize:20, color:C.text, marginBottom:4 }}>🌱 Nowi handlowcy</div>
+                  <div style={{ fontSize:12, color:C.text3, fontFamily:'DM Mono' }}>Vladyslav Horishnyi (SIP 130) · Mark Fedorov (SIP 131)</div>
+                </div>
+
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
+                  {[
+                    { name:'Vladyslav Horishnyi', shortName:'Vlad', calls: vladPhone, color:'#3A5BC7', colorLight:'#EEF2FF' },
+                    { name:'Mark Fedorov', shortName:'Mark', calls: markPhone, color:'#2D7A5A', colorLight:'#EDF7F2' },
+                  ].map(({ name, shortName, calls, color, colorLight }) => {
+                    const withScore = calls.filter(c => c.wynik_procentowy != null);
+                    const avg = withScore.length ? Math.round(withScore.reduce((a,b) => a + b.wynik_procentowy, 0) / withScore.length) : null;
+                    const lpr = calls.filter(c => c.typ_rozmowy === 'kontakt_z_lpr').length;
+                    const successes = calls.filter(c => c.sukces_wg_kryteriow).length;
+                    const succRate = calls.length ? Math.round(successes / calls.length * 100) : 0;
+
+                    // Onboarding-specific stats
+                    const withOnboarding = calls.filter(c => c.is_onboarding);
+                    const avgPewnosc = withOnboarding.filter(c=>c.onboarding_ocena_pewnosc).length
+                      ? Math.round(withOnboarding.filter(c=>c.onboarding_ocena_pewnosc).reduce((a,b)=>a+b.onboarding_ocena_pewnosc,0)/withOnboarding.filter(c=>c.onboarding_ocena_pewnosc).length*10)/10
+                      : null;
+                    const avgProdukt = withOnboarding.filter(c=>c.onboarding_ocena_produkt).length
+                      ? Math.round(withOnboarding.filter(c=>c.onboarding_ocena_produkt).reduce((a,b)=>a+b.onboarding_ocena_produkt,0)/withOnboarding.filter(c=>c.onboarding_ocena_produkt).length*10)/10
+                      : null;
+                    const avgTechnika = withOnboarding.filter(c=>c.onboarding_ocena_technika).length
+                      ? Math.round(withOnboarding.filter(c=>c.onboarding_ocena_technika).reduce((a,b)=>a+b.onboarding_ocena_technika,0)/withOnboarding.filter(c=>c.onboarding_ocena_technika).length*10)/10
+                      : null;
+
+                    // Recurring errors
+                    const errorMap = {};
+                    withOnboarding.forEach(c => {
+                      if (!c.onboarding_bledy) return;
+                      try {
+                        const bledy = typeof c.onboarding_bledy === 'string' ? JSON.parse(c.onboarding_bledy) : c.onboarding_bledy;
+                        if (Array.isArray(bledy)) bledy.forEach(b => {
+                          const key = b.substring(0, 50);
+                          errorMap[key] = (errorMap[key] || 0) + 1;
+                        });
+                      } catch(e) {}
+                    });
+                    const topErrors = Object.entries(errorMap).sort((a,b)=>b[1]-a[1]).slice(0,4);
+
+                    // Score timeline
+                    const timeline = [...withScore]
+                      .sort((a,b) => (a.call_time||'') > (b.call_time||'') ? 1 : -1)
+                      .slice(-10)
+                      .map(c => ({
+                        date: c.call_time ? format(parseISO(c.call_time), 'dd.MM') : '',
+                        score: c.wynik_procentowy
+                      }));
+
+                    return (
+                      <div key={name} style={{ background:C.surface, border:`1px solid ${C.border}`, borderTop:`4px solid ${color}`, borderRadius:14, padding:20 }}>
+                        {/* Header */}
+                        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
+                          <div style={{ width:40, height:40, borderRadius:20, background:colorLight, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>🌱</div>
+                          <div>
+                            <div style={{ fontFamily:'Outfit', fontWeight:700, fontSize:16, color:C.text }}>{name}</div>
+                            <div style={{ fontSize:10, fontFamily:'DM Mono', color:C.text3 }}>{calls.length} rozmów w tym okresie</div>
+                          </div>
+                        </div>
+
+                        {/* Stats row */}
+                        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:16 }}>
+                          {[
+                            { label:'Śr. wynik', value: avg != null ? `${avg}%` : '—', color: avg ? (avg>=70?C.green:avg>=40?C.amber:C.red) : C.text3 },
+                            { label:'LPR', value: lpr, color: color },
+                            { label:'Skuteczność', value: calls.length ? `${succRate}%` : '—', color: succRate >= 50 ? C.green : C.amber },
+                            { label:'Rozmów', value: calls.length, color: C.text },
+                          ].map(stat => (
+                            <div key={stat.label} style={{ background:colorLight, borderRadius:10, padding:'10px 12px', textAlign:'center' }}>
+                              <div style={{ fontFamily:'Outfit', fontWeight:700, fontSize:20, color:stat.color }}>{stat.value}</div>
+                              <div style={{ fontSize:9, fontFamily:'DM Mono', textTransform:'uppercase', color:C.text3, marginTop:2 }}>{stat.label}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Onboarding scores */}
+                        {(avgPewnosc || avgProdukt || avgTechnika) && (
+                          <div style={{ marginBottom:16 }}>
+                            <div style={{ fontSize:10, fontFamily:'DM Mono', textTransform:'uppercase', color:C.text3, marginBottom:8, letterSpacing:'0.06em' }}>Oceny onboardingowe (śr. 1-5)</div>
+                            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+                              {[
+                                { label:'Pewność siebie', val:avgPewnosc },
+                                { label:'Znajom. produktu', val:avgProdukt },
+                                { label:'Technika sprzedaży', val:avgTechnika },
+                              ].map(item => (
+                                <div key={item.label} style={{ background:C.surface2, borderRadius:8, padding:'8px 10px' }}>
+                                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
+                                    <div style={{ fontSize:9, color:C.text3, fontFamily:'DM Mono' }}>{item.label}</div>
+                                    <div style={{ fontSize:12, fontWeight:700, color: item.val ? (item.val>=4?C.green:item.val>=2.5?C.amber:C.red) : C.text3 }}>{item.val ?? '—'}</div>
+                                  </div>
+                                  {item.val && (
+                                    <div style={{ height:4, borderRadius:2, background:C.border }}>
+                                      <div style={{ height:'100%', borderRadius:2, background: item.val>=4?C.green:item.val>=2.5?C.amber:C.red, width:`${item.val/5*100}%` }}/>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Score timeline */}
+                        {timeline.length > 1 && (
+                          <div style={{ marginBottom:16 }}>
+                            <div style={{ fontSize:10, fontFamily:'DM Mono', textTransform:'uppercase', color:C.text3, marginBottom:8, letterSpacing:'0.06em' }}>Wyniki — ostatnie {timeline.length} rozmów</div>
+                            <ResponsiveContainer width="100%" height={80}>
+                              <LineChart data={timeline} margin={{top:4,right:4,bottom:4,left:4}}>
+                                <XAxis dataKey="date" tick={{fontSize:8,fill:C.text3,fontFamily:'DM Mono'}} axisLine={false} tickLine={false}/>
+                                <YAxis domain={[0,100]} hide/>
+                                <Tooltip contentStyle={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,fontSize:11}} formatter={v=>[`${v}%`,'Wynik']}/>
+                                <Line type="monotone" dataKey="score" stroke={color} strokeWidth={2} dot={{r:3,fill:color}} activeDot={{r:5}}/>
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                        )}
+
+                        {/* Recurring errors */}
+                        {topErrors.length > 0 && (
+                          <div>
+                            <div style={{ fontSize:10, fontFamily:'DM Mono', textTransform:'uppercase', color:C.text3, marginBottom:8, letterSpacing:'0.06em' }}>Powtarzające się błędy</div>
+                            <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+                              {topErrors.map(([err, cnt]) => (
+                                <div key={err} style={{ display:'flex', alignItems:'flex-start', gap:8, background:C.redLight, border:`1px solid ${C.redBorder}`, borderRadius:8, padding:'7px 10px' }}>
+                                  <div style={{ background:C.red, color:'#fff', fontSize:9, fontFamily:'DM Mono', borderRadius:10, padding:'1px 6px', whiteSpace:'nowrap', marginTop:1 }}>×{cnt}</div>
+                                  <div style={{ fontSize:11, color:C.text, lineHeight:1.4 }}>{err}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Recent calls list */}
+                        {calls.length > 0 && (
+                          <div style={{ marginTop:16 }}>
+                            <div style={{ fontSize:10, fontFamily:'DM Mono', textTransform:'uppercase', color:C.text3, marginBottom:8, letterSpacing:'0.06em' }}>Ostatnie rozmowy</div>
+                            <div style={{ display:'flex', flexDirection:'column', gap:5, maxHeight:200, overflowY:'auto' }}>
+                              {[...calls].sort((a,b)=>(b.call_time||'')>(a.call_time||'')?1:-1).slice(0,10).map(c => (
+                                <div key={c.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 10px', background:C.surface2, borderRadius:8, fontSize:11 }}>
+                                  <span style={{ fontFamily:'DM Mono', fontSize:10, color:C.text3, minWidth:70 }}>{c.call_time?format(parseISO(c.call_time),'dd.MM HH:mm'):''}</span>
+                                  <span style={{ flex:1, fontWeight:500 }}>{c.klient||'—'}</span>
+                                  {c.wynik_procentowy!=null && (
+                                    <span style={{ fontFamily:'DM Mono', fontWeight:700, fontSize:11, color:c.wynik_procentowy>=70?C.green:c.wynik_procentowy>=40?C.amber:C.red }}>{c.wynik_procentowy}%</span>
+                                  )}
+                                  {c.bitrix_url && <a href={c.bitrix_url} target="_blank" rel="noreferrer" style={{ fontSize:10, color:color, textDecoration:'none', fontFamily:'DM Mono' }}>→</a>}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {calls.length === 0 && (
+                          <div style={{ textAlign:'center', padding:'30px 0', color:C.text3, fontFamily:'DM Mono', fontSize:12 }}>Brak rozmów w tym okresie</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
       </div>
       {/* MEETING PANEL */}
       {meetingPanel && (

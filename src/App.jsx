@@ -1102,16 +1102,9 @@ export default function App() {
                         {calls.length > 0 && (
                           <div style={{ marginTop:16 }}>
                             <div style={{ fontSize:10, fontFamily:'DM Mono', textTransform:'uppercase', color:C.text3, marginBottom:8, letterSpacing:'0.06em' }}>Ostatnie rozmowy</div>
-                            <div style={{ display:'flex', flexDirection:'column', gap:5, maxHeight:200, overflowY:'auto' }}>
+                            <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
                               {[...calls].sort((a,b)=>(b.call_time||'')>(a.call_time||'')?1:-1).slice(0,10).map(c => (
-                                <div key={c.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 10px', background:C.surface2, borderRadius:8, fontSize:11 }}>
-                                  <span style={{ fontFamily:'DM Mono', fontSize:10, color:C.text3, minWidth:70 }}>{c.call_time?format(parseISO(c.call_time),'dd.MM HH:mm'):''}</span>
-                                  <span style={{ flex:1, fontWeight:500 }}>{c.klient||'—'}</span>
-                                  {c.wynik_procentowy!=null && (
-                                    <span style={{ fontFamily:'DM Mono', fontWeight:700, fontSize:11, color:c.wynik_procentowy>=70?C.green:c.wynik_procentowy>=40?C.amber:C.red }}>{c.wynik_procentowy}%</span>
-                                  )}
-                                  {c.bitrix_url && <a href={c.bitrix_url} target="_blank" rel="noreferrer" style={{ fontSize:10, color:color, textDecoration:'none', fontFamily:'DM Mono' }}>→</a>}
-                                </div>
+                                <CallDetail key={c.id} call={c} isOpen={activeCall===c.id} onToggle={()=>setActiveCall(activeCall===c.id?null:c.id)}/>
                               ))}
                             </div>
                           </div>

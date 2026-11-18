@@ -1612,8 +1612,8 @@ function DialogView({text,mgr}){
 function CallDetail({call,isOpen,onToggle}){
   const {useState:us}=React;
   const [showDialog,setShowDialog]=us(false);
-  const mgr=call.sip==='123'||call.manager==='Beata Janoszka'?'Beata':'Kamil';
-  const mgrColor=mgr==='Beata'?'#5A171E':'#2D6A4F';
+  const mgr=call.sip==='123'||call.manager==='Beata Janoszka'?'Beata':call.sip==='130'||call.manager==='Vladyslav Horishnyi'?'Vlad':call.sip==='131'||call.manager==='Mark Fedorov'?'Mark':'Kamil';
+  const mgrColor=mgr==='Beata'?'#5A171E':mgr==='Vlad'?'#3A5BC7':mgr==='Mark'?'#2D7A5A':'#2D6A4F';
   const pct=call.wynik_procentowy;
   const sukces=call.sukces_poziom;
   const sukColor=sukces==='sukces'?'#1A7A4A':sukces==='czesciowy'?'#C07A1A':'#C0392B';

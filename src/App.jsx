@@ -703,7 +703,7 @@ export default function App() {
                 {repeatedErrors.length > 0 && (
                   <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, marginBottom:24, overflow:'hidden' }}>
                     <div style={{ padding:'14px 20px', borderBottom:`1px solid ${C.border}` }}>
-                      <span style={{ fontFamily:'Outfit', fontWeight:700, fontSize:12, textTransform:'uppercase', letterSpacing:'0.1em', color:C.red }}>📉 {T.recurring_errors}</span>
+                      <span style={{ fontFamily:'Outfit', fontWeight:700, fontSize:12, textTransform:'uppercase', letterSpacing:'0.1em', color:C.red }}>📉 Powtarzające się błędy</span>
                     </div>
                     <div style={{ padding:'4px 0' }}>
                       {repeatedErrors.map(([err, cnt]) => (

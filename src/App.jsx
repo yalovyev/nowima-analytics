@@ -703,7 +703,7 @@ export default function App() {
                 {repeatedErrors.length > 0 && (
                   <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, marginBottom:24, overflow:'hidden' }}>
                     <div style={{ padding:'14px 20px', borderBottom:`1px solid ${C.border}` }}>
-                      <span style={{ fontFamily:'Outfit', fontWeight:700, fontSize:12, textTransform:'uppercase', letterSpacing:'0.1em', color:C.red }}>📉 Powtarzające się błędy</span>
+                      <span style={{ fontFamily:'Outfit', fontWeight:700, fontSize:12, textTransform:'uppercase', letterSpacing:'0.1em', color:C.red }}>📉 {T.recurring_errors}</span>
                     </div>
                     <div style={{ padding:'4px 0' }}>
                       {repeatedErrors.map(([err, cnt]) => (
@@ -971,11 +971,60 @@ export default function App() {
         )}
 
             {/* ── TRAINEES VIEW ── */}
-            {view === 'trainees' && (
-              <>
+            {view === 'trainees' && (() => {
+                const T = role === 'vlad' ? {
+                  title: '🌱 Мои звонки',
+                  subtitle: 'Vladyslav Horishnyi · SIP 130',
+                  calls_in_period: 'звонков за период',
+                  avg_score: 'Ср. результат',
+                  lpr: 'ЛПР',
+                  effectiveness: 'Эффективность',
+                  calls: 'Звонков',
+                  onboarding_scores: 'Оценки онбординга (ср. 1-5)',
+                  confidence: 'Уверенность',
+                  product: 'Знание продукта',
+                  technique: 'Техника продаж',
+                  score_history: 'Результаты — последние',
+                  score_history2: 'звонков',
+                  recurring_errors: 'Повторяющиеся ошибки',
+                  recent_calls: 'Последние звонки',
+                  comments_label: 'Комментарии к звонку',
+                  no_comments: 'Нет комментариев',
+                  comment_placeholder: 'Ваш комментарий к этому звонку...',
+                  send: 'Отправить',
+                  status_pending: '⏳ На рассмотрении',
+                  status_accepted: '✅ Принят',
+                  status_rejected: '❌ Отклонён',
+                  score_tooltip: 'Результат',
+                } : {
+                  title: '🌱 Nowi handlowcy',
+                  subtitle: 'Vladyslav Horishnyi (SIP 130) · Mark Fedorov (SIP 131)',
+                  calls_in_period: '{T.calls_in_period}',
+                  avg_score: T.avg_score,
+                  lpr: T.lpr,
+                  effectiveness: T.effectiveness,
+                  calls: T.calls,
+                  onboarding_scores: '{T.onboarding_scores}',
+                  confidence: T.confidence,
+                  product: T.product,
+                  technique: T.technique,
+                  score_history: 'Wyniki — ostatnie',
+                  score_history2: 'rozmów',
+                  recurring_errors: 'Powtarzające się błędy',
+                  recent_calls: '{T.recent_calls}',
+                  comments_label: 'Komentarze handlowca',
+                  no_comments: 'Brak komentarzy',
+                  comment_placeholder: 'Twój komentarz do tej rozmowy...',
+                  send: 'Wyślij',
+                  status_pending: '⏳ Na rozpatrzeniu',
+                  status_accepted: '✅ Przyjęty',
+                  status_rejected: '❌ Odrzucony',
+                  score_tooltip: 'Wynik',
+                };
+                return (<>
                 <div style={{ marginBottom:20 }}>
-                  <div style={{ fontFamily:'Outfit', fontWeight:700, fontSize:20, color:C.text, marginBottom:4 }}>🌱 Nowi handlowcy</div>
-                  <div style={{ fontSize:12, color:C.text3, fontFamily:'DM Mono' }}>Vladyslav Horishnyi (SIP 130) · Mark Fedorov (SIP 131)</div>
+                  <div style={{ fontFamily:'Outfit', fontWeight:700, fontSize:20, color:C.text, marginBottom:4 }}>{T.title}</div>
+                  {!isTrainee && <div style={{ fontSize:12, color:C.text3, fontFamily:'DM Mono' }}>{T.subtitle}</div>}
                 </div>
 
                 <div style={{ display:'grid', gridTemplateColumns: isTrainee ? '1fr' : '1fr 1fr', gap:20 }}>
@@ -1080,12 +1129,12 @@ export default function App() {
                         {/* Score timeline */}
                         {timeline.length > 1 && (
                           <div style={{ marginBottom:16 }}>
-                            <div style={{ fontSize:10, fontFamily:'DM Mono', textTransform:'uppercase', color:C.text3, marginBottom:8, letterSpacing:'0.06em' }}>Wyniki — ostatnie {timeline.length} rozmów</div>
+                            <div style={{ fontSize:10, fontFamily:'DM Mono', textTransform:'uppercase', color:C.text3, marginBottom:8, letterSpacing:'0.06em' }}>{T.score_history} {timeline.length} {T.score_history2}</div>
                             <ResponsiveContainer width="100%" height={80}>
                               <LineChart data={timeline} margin={{top:4,right:4,bottom:4,left:4}}>
                                 <XAxis dataKey="date" tick={{fontSize:8,fill:C.text3,fontFamily:'DM Mono'}} axisLine={false} tickLine={false}/>
                                 <YAxis domain={[0,100]} hide/>
-                                <Tooltip contentStyle={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,fontSize:11}} formatter={v=>[`${v}%`,'Wynik']}/>
+                                <Tooltip contentStyle={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,fontSize:11}} formatter={v=>[`${v}%`,T.score_tooltip]}/>
                                 <Line type="monotone" dataKey="score" stroke={color} strokeWidth={2} dot={{r:3,fill:color}} activeDot={{r:5}}/>
                               </LineChart>
                             </ResponsiveContainer>
@@ -1127,7 +1176,8 @@ export default function App() {
                   })}
                 </div>
               </>
-            )}
+              );
+            })()}
       </div>
       {/* MEETING PANEL */}
       {meetingPanel && (
@@ -1647,14 +1697,20 @@ function CallComments({callId, role}){
     await load();
   };
 
+  const isRu = role === 'vlad';
   const statusColor={pending:'#C07A1A',accepted:'#1A7A4A',rejected:'#C0392B'};
   const statusBg={pending:'#FEF8EC',accepted:'#EDF7F2',rejected:'#FEF2F0'};
-  const statusLabel={pending:'⏳ Na rozpatrzeniu',accepted:'✅ Przyjęty',rejected:'❌ Odrzucony'};
+  const statusLabel=isRu
+    ? {pending:'⏳ На рассмотрении',accepted:'✅ Принят',rejected:'❌ Отклонён'}
+    : {pending:'⏳ Na rozpatrzeniu',accepted:'✅ Przyjęty',rejected:'❌ Odrzucony'};
+  const L = isRu
+    ? { title:'Комментарии к звонку', empty:'Нет комментариев', placeholder:'Ваш комментарий к этому звонку...', send:'Отправить', accept:'✅ Принять', reject:'❌ Отклонить' }
+    : { title:'Komentarze handlowca', empty:'Brak komentarzy', placeholder:'Twój komentarz do tej rozmowy...', send:'Wyślij', accept:'✅ Przyjmij', reject:'❌ Odrzuć' };
 
   return(
     <div style={{marginTop:14,borderTop:'1px solid #E8E4DC',paddingTop:12}}>
-      <div style={{fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',color:'#A09890',marginBottom:8,letterSpacing:'0.06em'}}>Komentarze handlowca</div>
-      {comments.length===0&&<div style={{fontSize:12,color:'#A09890',fontFamily:'DM Mono',marginBottom:8}}>Brak komentarzy</div>}
+      <div style={{fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',color:'#A09890',marginBottom:8,letterSpacing:'0.06em'}}>{L.title}</div>
+      {comments.length===0&&<div style={{fontSize:12,color:'#A09890',fontFamily:'DM Mono',marginBottom:8}}>{L.empty}</div>}
       {comments.map(c=>(
         <div key={c.id} style={{background:'#FFF',border:'1px solid #E8E4DC',borderRadius:8,padding:'10px 12px',marginBottom:8}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}}>
@@ -1664,18 +1720,18 @@ function CallComments({callId, role}){
           <div style={{fontSize:12,color:'#1A1714',lineHeight:1.5}}>{c.comment}</div>
           {!isTrainee&&c.status==='pending'&&(
             <div style={{display:'flex',gap:6,marginTop:8}}>
-              <button onClick={()=>setStatus(c.id,'accepted')} style={{padding:'4px 12px',borderRadius:6,border:'1px solid #1A7A4A',background:'#EDF7F2',color:'#1A7A4A',fontSize:11,cursor:'pointer',fontFamily:'DM Mono'}}>✅ Przyjmij</button>
-              <button onClick={()=>setStatus(c.id,'rejected')} style={{padding:'4px 12px',borderRadius:6,border:'1px solid #C0392B',background:'#FEF2F0',color:'#C0392B',fontSize:11,cursor:'pointer',fontFamily:'DM Mono'}}>❌ Odrzuć</button>
+              <button onClick={()=>setStatus(c.id,'accepted')} style={{padding:'4px 12px',borderRadius:6,border:'1px solid #1A7A4A',background:'#EDF7F2',color:'#1A7A4A',fontSize:11,cursor:'pointer',fontFamily:'DM Mono'}}>{L.accept}</button>
+              <button onClick={()=>setStatus(c.id,'rejected')} style={{padding:'4px 12px',borderRadius:6,border:'1px solid #C0392B',background:'#FEF2F0',color:'#C0392B',fontSize:11,cursor:'pointer',fontFamily:'DM Mono'}}>{L.reject}</button>
             </div>
           )}
         </div>
       ))}
       {isTrainee&&(
         <form onSubmit={submit} style={{display:'flex',gap:8,marginTop:4}}>
-          <input value={text} onChange={e=>setText(e.target.value)} placeholder="Twój komentarz do tej rozmowy..." maxLength={500}
+          <input value={text} onChange={e=>setText(e.target.value)} placeholder={L.placeholder} maxLength={500}
             style={{flex:1,padding:'8px 12px',borderRadius:8,border:'1px solid #E8E4DC',fontSize:12,outline:'none',background:'#FFF'}}/>
           <button type="submit" disabled={saving||!text.trim()} style={{padding:'8px 16px',borderRadius:8,border:'none',background:'#5A171E',color:'#D1E925',fontSize:12,fontFamily:'DM Mono',cursor:'pointer',opacity:saving||!text.trim()?0.5:1}}>
-            {saving?'…':'Wyślij'}
+            {saving?'…':L.send}
           </button>
         </form>
       )}

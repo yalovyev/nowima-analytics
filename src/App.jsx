@@ -1618,9 +1618,75 @@ function DialogView({text,mgr}){
   );
 }
 
+function CallComments({callId, role}){
+  const {useState:us, useEffect:ue}=React;
+  const [comments,setComments]=us([]);
+  const [text,setText]=us('');
+  const [saving,setSaving]=us(false);
+  const isTrainee=role==='vlad'||role==='mark';
+  const author=role==='vlad'?'Vladyslav Horishnyi':role==='mark'?'Mark Fedorov':null;
+
+  const load=async()=>{
+    const {data}=await supabase.from('call_comments').select('*').eq('call_id',callId).order('created_at',{ascending:true});
+    if(data) setComments(data);
+  };
+  ue(()=>{load();},[callId]);
+
+  const submit=async(e)=>{
+    e.preventDefault();
+    if(!text.trim()) return;
+    setSaving(true);
+    await supabase.from('call_comments').insert({call_id:callId,author,comment:text.trim(),status:'pending'});
+    setText('');
+    await load();
+    setSaving(false);
+  };
+
+  const setStatus=async(id,status)=>{
+    await supabase.from('call_comments').update({status}).eq('id',id);
+    await load();
+  };
+
+  const statusColor={pending:'#C07A1A',accepted:'#1A7A4A',rejected:'#C0392B'};
+  const statusBg={pending:'#FEF8EC',accepted:'#EDF7F2',rejected:'#FEF2F0'};
+  const statusLabel={pending:'⏳ Na rozpatrzeniu',accepted:'✅ Przyjęty',rejected:'❌ Odrzucony'};
+
+  return(
+    <div style={{marginTop:14,borderTop:'1px solid #E8E4DC',paddingTop:12}}>
+      <div style={{fontSize:10,fontFamily:'DM Mono',textTransform:'uppercase',color:'#A09890',marginBottom:8,letterSpacing:'0.06em'}}>Komentarze handlowca</div>
+      {comments.length===0&&<div style={{fontSize:12,color:'#A09890',fontFamily:'DM Mono',marginBottom:8}}>Brak komentarzy</div>}
+      {comments.map(c=>(
+        <div key={c.id} style={{background:'#FFF',border:'1px solid #E8E4DC',borderRadius:8,padding:'10px 12px',marginBottom:8}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}}>
+            <span style={{fontSize:11,fontWeight:600,color:'#1A1714',fontFamily:'DM Mono'}}>{c.author?.split(' ')[0]}</span>
+            <span style={{fontSize:10,fontFamily:'DM Mono',padding:'2px 8px',borderRadius:20,background:statusBg[c.status]||statusBg.pending,color:statusColor[c.status]||statusColor.pending}}>{statusLabel[c.status]||statusLabel.pending}</span>
+          </div>
+          <div style={{fontSize:12,color:'#1A1714',lineHeight:1.5}}>{c.comment}</div>
+          {!isTrainee&&c.status==='pending'&&(
+            <div style={{display:'flex',gap:6,marginTop:8}}>
+              <button onClick={()=>setStatus(c.id,'accepted')} style={{padding:'4px 12px',borderRadius:6,border:'1px solid #1A7A4A',background:'#EDF7F2',color:'#1A7A4A',fontSize:11,cursor:'pointer',fontFamily:'DM Mono'}}>✅ Przyjmij</button>
+              <button onClick={()=>setStatus(c.id,'rejected')} style={{padding:'4px 12px',borderRadius:6,border:'1px solid #C0392B',background:'#FEF2F0',color:'#C0392B',fontSize:11,cursor:'pointer',fontFamily:'DM Mono'}}>❌ Odrzuć</button>
+            </div>
+          )}
+        </div>
+      ))}
+      {isTrainee&&(
+        <form onSubmit={submit} style={{display:'flex',gap:8,marginTop:4}}>
+          <input value={text} onChange={e=>setText(e.target.value)} placeholder="Twój komentarz do tej rozmowy..." maxLength={500}
+            style={{flex:1,padding:'8px 12px',borderRadius:8,border:'1px solid #E8E4DC',fontSize:12,outline:'none',background:'#FFF'}}/>
+          <button type="submit" disabled={saving||!text.trim()} style={{padding:'8px 16px',borderRadius:8,border:'none',background:'#5A171E',color:'#D1E925',fontSize:12,fontFamily:'DM Mono',cursor:'pointer',opacity:saving||!text.trim()?0.5:1}}>
+            {saving?'…':'Wyślij'}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 function CallDetail({call,isOpen,onToggle}){
   const {useState:us}=React;
   const [showDialog,setShowDialog]=us(false);
+  const role=localStorage.getItem('nowima_role')||'admin';
   const mgr=call.sip==='123'||call.manager==='Beata Janoszka'?'Beata':call.sip==='130'||call.manager==='Vladyslav Horishnyi'?'Vlad':call.sip==='131'||call.manager==='Mark Fedorov'?'Mark':'Kamil';
   const mgrColor=mgr==='Beata'?'#5A171E':mgr==='Vlad'?'#3A5BC7':mgr==='Mark'?'#2D7A5A':'#2D6A4F';
   const pct=call.wynik_procentowy;
@@ -1654,6 +1720,7 @@ function CallDetail({call,isOpen,onToggle}){
             <div>
               {call.outcome&&<div style={{fontSize:12,color:'#6B6560',marginBottom:6}}>📌 {call.outcome}</div>}
               {call.akcja&&<div style={{fontSize:12,color:'#C07A1A'}}>→ {call.akcja}</div>}
+              <CallComments callId={call.call_id} role={role}/>
             </div>
           ):(
             <>
@@ -1696,6 +1763,7 @@ function CallDetail({call,isOpen,onToggle}){
                   )}
                 </div>
               )}
+              <CallComments callId={call.call_id} role={role}/>
             </>
           )}
         </div>

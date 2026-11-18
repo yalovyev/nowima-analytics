@@ -1461,6 +1461,7 @@ function TopCallsBlock({phoneCalls, type, C, format, parseISO}) {
                     </div>
                   </div>
                 )}
+                <CallComments callId={c.call_id} role={role}/>
               </div>
             )}
           </div>

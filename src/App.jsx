@@ -68,6 +68,8 @@ const USERS = {
   'nowima': { password: 'dCfsWvbqERta', role: 'admin' },
   'beata':  { password: 'NgsiKwjjrt7Y', role: 'beata' },
   'kamil':  { password: 's7qD8FYGn1TT', role: 'kamil' },
+  'v.horishnii@nowima.eu': { password: '47392815', role: 'vlad' },
+  'm.fedorov@nowima.eu':   { password: '62918473', role: 'mark' },
 };
 
 function LoginScreen({onLogin}) {
@@ -140,11 +142,15 @@ export default function App() {
     if (r === 'kamil') return 'kamil';
     return 'all';
   });
+  const isTrainee = role === 'vlad' || role === 'mark';
   const [source, setSource] = useState('all');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [activeCall, setActiveCall] = useState(null);
-  const [view, setView] = useState('calls');
+  const [view, setView] = useState(() => {
+    const r = localStorage.getItem('nowima_role') || 'admin';
+    return (r === 'vlad' || r === 'mark') ? 'trainees' : 'calls';
+  });
   const [onboardingType, setOnboardingType] = useState('best');  // 'best' | 'worst'
   const [onboardingStart, setOnboardingStart] = useState('');
   const [onboardingEnd, setOnboardingEnd] = useState('');
@@ -345,7 +351,7 @@ export default function App() {
             </div>
             <div style={{ padding:'20px' }}>
               <div style={{ fontSize:10, fontFamily:'DM Mono', textTransform:'uppercase', color:C.text3, marginBottom:10, letterSpacing:'0.08em' }}>Widok</div>
-              {[['calls','📞 Rozmowy'],['onboarding','⭐ TOP'],['portfolio','🏢 Portfel firm'],['trainees','🌱 Nowi handlowcy']].map(([v,label]) => (
+              {[['calls','📞 Rozmowy'],['onboarding','⭐ TOP'],['portfolio','🏢 Portfel firm'],['trainees','🌱 Nowi handlowcy']].filter(([v])=>!isTrainee||v==='trainees').map(([v,label]) => (
                 <div key={v} onClick={() => { setView(v); setSidebarOpen(false); }} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:8, marginBottom:4, cursor:'pointer', background:view===v ? C.brandLight : 'transparent', border:`1px solid ${view===v ? C.brandBorder : 'transparent'}` }}>
                   <div style={{ fontSize:12, fontWeight:500, color:view===v ? C.brand : C.text }}>{label}</div>
                   {view===v && <div style={{ marginLeft:'auto', color:C.brand, fontSize:12 }}>✓</div>}
@@ -361,11 +367,11 @@ export default function App() {
         <div style={{ maxWidth:1440, margin:'0 auto', padding:'0 16px', minHeight:52, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
 
           {/* Sidebar toggle */}
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ display:'flex', flexDirection:'column', gap:3.5, padding:'7px 8px', borderRadius:6, border:'1px solid rgba(255,255,255,0.2)', background:sidebarOpen?'rgba(209,233,37,0.15)':'transparent', cursor:'pointer' }}>
+          {!isTrainee && <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ display:'flex', flexDirection:'column', gap:3.5, padding:'7px 8px', borderRadius:6, border:'1px solid rgba(255,255,255,0.2)', background:sidebarOpen?'rgba(209,233,37,0.15)':'transparent', cursor:'pointer' }}>
             <div style={{ width:16, height:2, background:C.lime, borderRadius:1 }}/>
             <div style={{ width:16, height:2, background:C.lime, borderRadius:1 }}/>
             <div style={{ width:16, height:2, background:C.lime, borderRadius:1 }}/>
-          </button>
+          </button>}
 
           <div style={{ fontFamily:'Outfit', fontWeight:800, fontSize:14, color:C.lime, letterSpacing:1 }}>NOWIMA</div>
 
@@ -410,11 +416,13 @@ export default function App() {
 
 
           <div style={{ marginLeft:'auto', display:'flex', gap:8, alignItems:'center' }}>
-            {hot.length > 0 && <span style={{ fontSize:11, padding:'3px 8px', borderRadius:20, border:`1px solid ${C.lime}`, color:C.lime, background:'rgba(209,233,37,0.1)', fontFamily:'DM Mono' }}>🔥 {hot.length}</span>}
-            {pilne.filter(c=>c.wynik!=='gorący lead').length > 0 && <span style={{ fontSize:11, padding:'3px 8px', borderRadius:20, border:'1px solid #F5D89A', color:'#C07A1A', background:'rgba(192,122,26,0.1)', fontFamily:'DM Mono' }}>⚠️ {pilne.filter(c=>c.wynik!=='gorący lead').length}</span>}
-            <button onClick={exportCSV} style={{ padding:'4px 10px', borderRadius:20, border:'1px solid rgba(255,255,255,0.2)', background:'transparent', color:'rgba(255,255,255,0.6)', fontSize:11, fontFamily:'DM Mono', cursor:'pointer' }}>⬇ CSV</button>
-            {meetings.length > 0 && <button onClick={() => setMeetingPanel(true)} style={{ padding:'4px 10px', borderRadius:20, border:`1px solid ${C.lime}`, background:'rgba(209,233,37,0.15)', color:C.lime, fontSize:11, fontFamily:'DM Mono', cursor:'pointer' }}>🎥 {meetings.length}</button>}
+            {!isTrainee && hot.length > 0 && <span style={{ fontSize:11, padding:'3px 8px', borderRadius:20, border:`1px solid ${C.lime}`, color:C.lime, background:'rgba(209,233,37,0.1)', fontFamily:'DM Mono' }}>🔥 {hot.length}</span>}
+            {!isTrainee && pilne.filter(c=>c.wynik!=='gorący lead').length > 0 && <span style={{ fontSize:11, padding:'3px 8px', borderRadius:20, border:'1px solid #F5D89A', color:'#C07A1A', background:'rgba(192,122,26,0.1)', fontFamily:'DM Mono' }}>⚠️ {pilne.filter(c=>c.wynik!=='gorący lead').length}</span>}
+            {!isTrainee && <button onClick={exportCSV} style={{ padding:'4px 10px', borderRadius:20, border:'1px solid rgba(255,255,255,0.2)', background:'transparent', color:'rgba(255,255,255,0.6)', fontSize:11, fontFamily:'DM Mono', cursor:'pointer' }}>⬇ CSV</button>}
+            {!isTrainee && meetings.length > 0 && <button onClick={() => setMeetingPanel(true)} style={{ padding:'4px 10px', borderRadius:20, border:`1px solid ${C.lime}`, background:'rgba(209,233,37,0.15)', color:C.lime, fontSize:11, fontFamily:'DM Mono', cursor:'pointer' }}>🎥 {meetings.length}</button>}
+            {isTrainee && <span style={{ fontSize:12, color:'rgba(255,255,255,0.7)', fontFamily:'DM Mono' }}>{role === 'vlad' ? 'Vladyslav' : 'Mark'}</span>}
             <button onClick={fetchData} style={{ padding:'4px 10px', borderRadius:20, border:'1px solid rgba(255,255,255,0.2)', background:'transparent', color:'rgba(255,255,255,0.6)', fontSize:11, fontFamily:'DM Mono', cursor:'pointer' }}>↻ {format(lastUpdate,'HH:mm')}</button>
+            <button onClick={()=>{localStorage.clear();window.location.reload();}} style={{ padding:'4px 10px', borderRadius:20, border:'1px solid rgba(255,255,255,0.15)', background:'transparent', color:'rgba(255,255,255,0.4)', fontSize:11, fontFamily:'DM Mono', cursor:'pointer' }}>⏏</button>
           </div>
         </div>
       </header>
@@ -970,11 +978,12 @@ export default function App() {
                   <div style={{ fontSize:12, color:C.text3, fontFamily:'DM Mono' }}>Vladyslav Horishnyi (SIP 130) · Mark Fedorov (SIP 131)</div>
                 </div>
 
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
+                <div style={{ display:'grid', gridTemplateColumns: isTrainee ? '1fr' : '1fr 1fr', gap:20 }}>
                   {[
                     { name:'Vladyslav Horishnyi', shortName:'Vlad', calls: vladPhone, color:'#3A5BC7', colorLight:'#EEF2FF' },
                     { name:'Mark Fedorov', shortName:'Mark', calls: markPhone, color:'#2D7A5A', colorLight:'#EDF7F2' },
-                  ].map(({ name, shortName, calls, color, colorLight }) => {
+                  ].filter(({ name }) => !isTrainee || (role === 'vlad' && name === 'Vladyslav Horishnyi') || (role === 'mark' && name === 'Mark Fedorov'))
+                  .map(({ name, shortName, calls, color, colorLight }) => {
                     const withScore = calls.filter(c => c.wynik_procentowy != null);
                     const avg = withScore.length ? Math.round(withScore.reduce((a,b) => a + b.wynik_procentowy, 0) / withScore.length) : null;
                     const lpr = calls.filter(c => c.typ_rozmowy === 'kontakt_z_lpr').length;

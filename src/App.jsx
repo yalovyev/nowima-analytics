@@ -167,6 +167,8 @@ export default function App() {
   const [listCollapsed, setListCollapsed] = useState(false);
   const [listTab, setListTab] = useState('calls');
   const PAGE_SIZE = 100;
+  const [bitrixKpi, setBitrixKpi] = useState(null);
+  const [bitrixKpiLoading, setBitrixKpiLoading] = useState(false);
 
   const getRange = useCallback((offset = 0) => {
     const now = new Date();
@@ -209,6 +211,19 @@ export default function App() {
     if (role === 'kamil') setMgr('kamil');
   }, [role]);
   useEffect(() => { if (view === 'portfolio') fetchCompanies(); }, [view, fetchCompanies]);
+
+  // Fetch Bitrix KPI for trainees tab — always today's date
+  useEffect(() => {
+    if (view !== 'trainees') return;
+    setBitrixKpiLoading(true);
+    const pad = n => String(n).padStart(2, '0');
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+    fetch(`/api/bitrix-stats?date=${dateStr}`)
+      .then(r => r.json())
+      .then(data => { setBitrixKpi(data); setBitrixKpiLoading(false); })
+      .catch(() => setBitrixKpiLoading(false));
+  }, [view]);
 
   // Filtered calls by manager + source
   const calls = useMemo(() => {
@@ -1125,6 +1140,52 @@ export default function App() {
                             </div>
                           </div>
                         )}
+
+                        {/* Bitrix KPI block */}
+                        {(() => {
+                          const bKey = shortName.toLowerCase(); // 'vlad' or 'mark'
+                          const bx = bitrixKpi && bitrixKpi.managers && bitrixKpi.managers[bKey];
+                          const plans = bitrixKpi && bitrixKpi.plans;
+                          if (!bx && !bitrixKpiLoading) return null;
+                          if (bitrixKpiLoading) return (
+                            <div style={{ marginBottom:16, padding:'10px 12px', background:colorLight, borderRadius:10, fontSize:11, color:C.text3, fontFamily:'DM Mono', textAlign:'center' }}>
+                              ⏳ Ładowanie KPI Bitrix…
+                            </div>
+                          );
+                          const kpiTiles = [
+                            { icon:'📄', label:'Oferty', val: bx.oferty, plan: plans.oferty },
+                            { icon:'📝', label:'Umowy', val: bx.umowy, plan: plans.umowy },
+                            { icon:'📋', label:'Zamówienia', val: bx.zamowienia, plan: plans.zamowienia },
+                            { icon:'📤', label:'E-mail↑', val: bx.email_wyslane, plan: plans.emails },
+                            { icon:'📥', label:'E-mail↓', val: bx.email_otrzymane, plan: 0 },
+                            { icon:'🗂', label:'Leady', val: bx.leady, plan: 0 },
+                            { icon:'📅', label:'Spotkania', val: bx.spotkania, plan: 0 },
+                          ];
+                          const tileColor = (val, plan) => {
+                            if (plan > 0 && val >= plan) return C.green;
+                            if (plan > 0 && val > 0) return C.amber;
+                            return C.text3;
+                          };
+                          const tileBg = (val, plan) => {
+                            if (plan > 0 && val >= plan) return C.greenLight;
+                            if (plan > 0 && val > 0) return C.amberLight || '#FEF8EC';
+                            return colorLight;
+                          };
+                          return (
+                            <div style={{ marginBottom:16 }}>
+                              <div style={{ fontSize:10, fontFamily:'DM Mono', textTransform:'uppercase', color:C.text3, marginBottom:8, letterSpacing:'0.06em' }}>Aktywność dziś · Bitrix24</div>
+                              <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6 }}>
+                                {kpiTiles.map(({ icon, label, val, plan }) => (
+                                  <div key={label} style={{ background: tileBg(val, plan), border:`1px solid ${plan > 0 && val >= plan ? C.greenBorder || '#9AD5BC' : C.border}`, borderRadius:10, padding:'8px 10px', textAlign:'center' }}>
+                                    <div style={{ fontSize:9, fontFamily:'DM Mono', color:C.text3, marginBottom:3 }}>{icon} {label}</div>
+                                    <div style={{ fontFamily:'Outfit', fontWeight:700, fontSize:18, color: tileColor(val, plan) }}>{val}</div>
+                                    {plan > 0 && <div style={{ fontSize:9, fontFamily:'DM Mono', color:C.text3, marginTop:1 }}>/ {plan}</div>}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })()}
 
                         {/* Score timeline */}
                         {timeline.length > 1 && (

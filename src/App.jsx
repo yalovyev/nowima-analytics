@@ -1153,6 +1153,8 @@ export default function App() {
                             </div>
                           );
                           const kpiTiles = [
+                            { icon:'📞', label:'Połączenia', val: bx.calls_total, plan: plans.calls },
+                            { icon:'⏱', label:'Rozm. >60s', val: bx.calls_60s, plan: 0 },
                             { icon:'📄', label:'Oferty', val: bx.oferty, plan: plans.oferty },
                             { icon:'📝', label:'Umowy', val: bx.umowy, plan: plans.umowy },
                             { icon:'📋', label:'Zamówienia', val: bx.zamowienia, plan: plans.zamowienia },

@@ -54,7 +54,7 @@ async function getStatsForManager(uid, dateFrom, dateTo) {
   const TYPE_UMOWA  = '5590';
   const TYPE_ZAMOWIENIE_IDS = new Set(['5592', '5594', '5596']);
 
-  const stats = { oferty: 0, umowy: 0, zamowienia: 0, leady: 0, spotkania: 0, email_wyslane: 0, email_otrzymane: 0 };
+  const stats = { oferty: 0, umowy: 0, zamowienia: 0, leady: 0, spotkania: 0, email_wyslane: 0, email_otrzymane: 0, calls_total: 0, calls_60s: 0 };
 
   try {
     // 1. Dokumenty (oferty/umowy/zamówienia)
@@ -93,7 +93,16 @@ async function getStatsForManager(uid, dateFrom, dateTo) {
       || String(a.TYPE_ID) === '1'
     ).length;
 
-    // 4. E-maile
+    // 4. Rozmowy (TYPE_ID=2 = telefon)
+    const callResp = await bitrixPost('crm.activity.list', {
+      filter: { RESPONSIBLE_ID: uid, TYPE_ID: 2, '>=CREATED': dateFrom, '<=CREATED': dateTo },
+      select: ['ID', 'DURATION'],
+    });
+    const calls = callResp.result || [];
+    stats.calls_total = calls.length;
+    stats.calls_60s   = calls.filter(c => parseInt(c.DURATION || 0, 10) >= 60).length;
+
+    // 5. E-maile
     const mailResp = await bitrixPost('crm.activity.list', {
       filter: { RESPONSIBLE_ID: uid, TYPE_ID: 4, '>=CREATED': dateFrom, '<=CREATED': dateTo },
       select: ['ID', 'DIRECTION'],

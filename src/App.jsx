@@ -185,11 +185,11 @@ export default function App() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     const { start, end } = getRange(0);
-    const { data } = await supabase.from('calls').select('*').gte('call_time', start.toISOString()).lte('call_time', end.toISOString()).order('call_time', { ascending: false });
+    const { data } = await supabase.from('calls').select('*').gte('call_time', start.toISOString()).lte('call_time', end.toISOString()).order('call_time', { ascending: false }).limit(2000);
     setAllData(data || []);
     if (compareMode) {
       const { start: ps, end: pe } = getRange(1);
-      const { data: pd } = await supabase.from('calls').select('*').gte('call_time', ps.toISOString()).lte('call_time', pe.toISOString());
+      const { data: pd } = await supabase.from('calls').select('*').gte('call_time', ps.toISOString()).lte('call_time', pe.toISOString()).limit(2000);
       setPrevData(pd || []);
     }
     setLastUpdate(new Date());

@@ -5,6 +5,33 @@
  */
 
 const https = require('https');
+const http_module = require('https'); // alias
+
+const SUPABASE_URL = 'https://ufrpvnxndrjqfcudzayi.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_8zenverY0RlvZ8SjGCElaQ_H3xpKD6B';
+
+function supabaseGet(path) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(SUPABASE_URL + path);
+    const options = {
+      hostname: url.hostname,
+      path: url.pathname + url.search,
+      method: 'GET',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+      },
+    };
+    const req = https.request(options, res => {
+      let raw = '';
+      res.on('data', chunk => { raw += chunk; });
+      res.on('end', () => { try { resolve(JSON.parse(raw)); } catch(e) { resolve([]); } });
+    });
+    req.on('error', reject);
+    req.setTimeout(10000, () => { req.destroy(); reject(new Error('timeout')); });
+    req.end();
+  });
+}
 
 const BITRIX_WEBHOOK = 'https://nowima.bitrix24.pl/rest/1/vv0k0rhzmcqmv58z/';
 
@@ -14,11 +41,11 @@ const MANAGERS = [
 ];
 
 const ONBOARDING_PLANS = {
-  calls:     30,
-  emails:    12,
-  oferty:     1,
-  umowy:      0,
-  zamowienia: 0,
+  calls_60s:  30,   // plan: rozmowy powyżej 60s
+  emails:     12,
+  oferty:      1,
+  umowy:       0,
+  zamowienia:  0,
 };
 
 function bitrixPost(method, body) {
@@ -93,16 +120,7 @@ async function getStatsForManager(uid, dateFrom, dateTo) {
       || String(a.TYPE_ID) === '1'
     ).length;
 
-    // 4. Rozmowy (TYPE_ID=2 = telefon)
-    const callResp = await bitrixPost('crm.activity.list', {
-      filter: { RESPONSIBLE_ID: uid, TYPE_ID: 2, '>=CREATED': dateFrom, '<=CREATED': dateTo },
-      select: ['ID', 'DURATION'],
-    });
-    const calls = callResp.result || [];
-    stats.calls_total = calls.length;
-    stats.calls_60s   = calls.filter(c => parseInt(c.DURATION || 0, 10) >= 60).length;
-
-    // 5. E-maile
+    // 4. E-maile
     const mailResp = await bitrixPost('crm.activity.list', {
       filter: { RESPONSIBLE_ID: uid, TYPE_ID: 4, '>=CREATED': dateFrom, '<=CREATED': dateTo },
       select: ['ID', 'DIRECTION'],
@@ -134,11 +152,30 @@ module.exports = async (req, res) => {
   const dateFrom = `${dateParam}T00:00:00`;
   const dateTo   = `${dateParam}T23:59:59`;
 
+  // Pobierz rozmowy z Supabase (rzeczywiste dane Zadarma)
+  const sipMap = { vlad: '130', mark: '131' };
+  const callsFromSupabase = {};
+  await Promise.all(MANAGERS.map(async ({ key }) => {
+    const sip = sipMap[key];
+    try {
+      const rows = await supabaseGet(
+        `/rest/v1/calls?select=duration&sip=eq.${sip}&call_time=gte.${dateParam}T00:00:00&call_time=lte.${dateParam}T23:59:59&limit=1000`
+      );
+      const arr = Array.isArray(rows) ? rows : [];
+      callsFromSupabase[key] = {
+        calls_total: arr.length,
+        calls_60s: arr.filter(c => parseInt(c.duration || 0, 10) >= 60).length,
+      };
+    } catch(e) {
+      callsFromSupabase[key] = { calls_total: 0, calls_60s: 0 };
+    }
+  }));
+
   const result = { date: dateParam, plans: ONBOARDING_PLANS, managers: {} };
 
   await Promise.all(MANAGERS.map(async ({ name, userId, key }) => {
     const stats = await getStatsForManager(userId, dateFrom, dateTo);
-    result.managers[key] = { name, ...stats };
+    result.managers[key] = { name, ...stats, ...callsFromSupabase[key] };
   }));
 
   res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60');

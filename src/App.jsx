@@ -1224,7 +1224,7 @@ export default function App() {
                           <div style={{ marginTop:16 }}>
                             <div style={{ fontSize:10, fontFamily:'DM Mono', textTransform:'uppercase', color:C.text3, marginBottom:8, letterSpacing:'0.06em' }}>Ostatnie rozmowy</div>
                             <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-                              {[...calls].sort((a,b)=>(b.call_time||'')>(a.call_time||'')?1:-1).slice(0,10).map(c => (
+                              {[...calls].sort((a,b)=>(b.call_time||'')>(a.call_time||'')?1:-1).slice(0,50).map(c => (
                                 <CallDetail key={c.id} call={c} isOpen={activeCall===c.id} onToggle={()=>setActiveCall(activeCall===c.id?null:c.id)}/>
                               ))}
                             </div>

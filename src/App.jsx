@@ -147,6 +147,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [activeCall, setActiveCall] = useState(null);
+  const [onboardingCallSort, setOnboardingCallSort] = useState('time_desc'); // 'time_desc','dur_desc','dur_asc'
   const [view, setView] = useState(() => {
     const r = localStorage.getItem('nowima_role') || 'admin';
     return (r === 'vlad' || r === 'mark') ? 'trainees' : 'calls';
@@ -1222,9 +1223,29 @@ export default function App() {
                         {/* Recent calls list */}
                         {calls.length > 0 && (
                           <div style={{ marginTop:16 }}>
-                            <div style={{ fontSize:10, fontFamily:'DM Mono', textTransform:'uppercase', color:C.text3, marginBottom:8, letterSpacing:'0.06em' }}>Ostatnie rozmowy</div>
+                            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+                              <div style={{ fontSize:10, fontFamily:'DM Mono', textTransform:'uppercase', color:C.text3, letterSpacing:'0.06em' }}>Ostatnie rozmowy</div>
+                              <div style={{ display:'flex', gap:4 }}>
+                                {[
+                                  { key:'time_desc', label:'🕐 Czas' },
+                                  { key:'dur_desc',  label:'⬇ Czas trw.' },
+                                  { key:'dur_asc',   label:'⬆ Czas trw.' },
+                                ].map(opt => (
+                                  <button key={opt.key} onClick={()=>setOnboardingCallSort(opt.key)}
+                                    style={{ fontSize:9, fontFamily:'DM Mono', padding:'2px 6px', borderRadius:4, border:'1px solid', cursor:'pointer',
+                                      borderColor: onboardingCallSort===opt.key ? C.accent : C.border,
+                                      background: onboardingCallSort===opt.key ? C.accent : 'transparent',
+                                      color: onboardingCallSort===opt.key ? '#fff' : C.text3,
+                                    }}>{opt.label}</button>
+                                ))}
+                              </div>
+                            </div>
                             <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-                              {[...calls].sort((a,b)=>(b.call_time||'')>(a.call_time||'')?1:-1).slice(0,50).map(c => (
+                              {[...calls].sort((a,b)=>{
+                                if (onboardingCallSort==='dur_desc') return (parseInt(b.duration||0,10))-(parseInt(a.duration||0,10));
+                                if (onboardingCallSort==='dur_asc')  return (parseInt(a.duration||0,10))-(parseInt(b.duration||0,10));
+                                return (b.call_time||'')>(a.call_time||'')?1:-1;
+                              }).slice(0,100).map(c => (
                                 <CallDetail key={c.id} call={c} isOpen={activeCall===c.id} onToggle={()=>setActiveCall(activeCall===c.id?null:c.id)}/>
                               ))}
                             </div>

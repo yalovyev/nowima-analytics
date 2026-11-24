@@ -70,6 +70,7 @@ const USERS = {
   'kamil':  { password: 's7qD8FYGn1TT', role: 'kamil' },
   'v.horishnii@nowima.eu': { password: '47392815', role: 'vlad' },
   'm.fedorov@nowima.eu':   { password: '62918473', role: 'mark' },
+  'a.bondarenko@nowima.eu':{ password: '39541826', role: 'alona' },
 };
 
 function LoginScreen({onLogin}) {
@@ -142,7 +143,7 @@ export default function App() {
     if (r === 'kamil') return 'kamil';
     return 'all';
   });
-  const isTrainee = role === 'vlad' || role === 'mark';
+  const isTrainee = role === 'vlad' || role === 'mark' || role === 'alona';
   const [source, setSource] = useState('all');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(new Date());
@@ -150,7 +151,7 @@ export default function App() {
   const [onboardingCallSort, setOnboardingCallSort] = useState('time_desc'); // 'time_desc','dur_desc','dur_asc'
   const [view, setView] = useState(() => {
     const r = localStorage.getItem('nowima_role') || 'admin';
-    return (r === 'vlad' || r === 'mark') ? 'trainees' : 'calls';
+    return (r === 'vlad' || r === 'mark' || r === 'alona') ? 'trainees' : 'calls';
   });
   const [onboardingType, setOnboardingType] = useState('best');  // 'best' | 'worst'
   const [onboardingStart, setOnboardingStart] = useState('');
@@ -291,8 +292,9 @@ export default function App() {
 
   const beataPhone = phoneCalls.filter(c => c.sip === '123' || c.manager === 'Beata Janoszka');
   const kamilPhone = phoneCalls.filter(c => c.sip === '119' || c.manager === 'Kamil Wisniewski' || c.manager === 'Kamil Wiśniewski');
-  const vladPhone = phoneCalls.filter(c => c.sip === '130' || c.manager === 'Vladyslav Horishnyi');
-  const markPhone = phoneCalls.filter(c => c.sip === '131' || c.manager === 'Mark Fedorov');
+  const vladPhone  = phoneCalls.filter(c => c.sip === '130' || c.manager === 'Vladyslav Horishnyi');
+  const markPhone  = phoneCalls.filter(c => c.sip === '131' || c.manager === 'Mark Fedorov');
+  const alonaPhone = phoneCalls.filter(c => c.sip === '116' || c.manager === 'Alona Bondarenko');
 
   const avgPct = (arr) => { const v = arr.filter(c => c.wynik_procentowy != null).map(c => c.wynik_procentowy); return v.length ? Math.round(v.reduce((a,b)=>a+b,0)/v.length) : null; };
 
@@ -436,7 +438,7 @@ export default function App() {
             {!isTrainee && pilne.filter(c=>c.wynik!=='gorący lead').length > 0 && <span style={{ fontSize:11, padding:'3px 8px', borderRadius:20, border:'1px solid #F5D89A', color:'#C07A1A', background:'rgba(192,122,26,0.1)', fontFamily:'DM Mono' }}>⚠️ {pilne.filter(c=>c.wynik!=='gorący lead').length}</span>}
             {!isTrainee && <button onClick={exportCSV} style={{ padding:'4px 10px', borderRadius:20, border:'1px solid rgba(255,255,255,0.2)', background:'transparent', color:'rgba(255,255,255,0.6)', fontSize:11, fontFamily:'DM Mono', cursor:'pointer' }}>⬇ CSV</button>}
             {!isTrainee && meetings.length > 0 && <button onClick={() => setMeetingPanel(true)} style={{ padding:'4px 10px', borderRadius:20, border:`1px solid ${C.lime}`, background:'rgba(209,233,37,0.15)', color:C.lime, fontSize:11, fontFamily:'DM Mono', cursor:'pointer' }}>🎥 {meetings.length}</button>}
-            {isTrainee && <span style={{ fontSize:12, color:'rgba(255,255,255,0.7)', fontFamily:'DM Mono' }}>{role === 'vlad' ? 'Vladyslav' : 'Mark'}</span>}
+            {isTrainee && <span style={{ fontSize:12, color:'rgba(255,255,255,0.7)', fontFamily:'DM Mono' }}>{role === 'vlad' ? 'Vladyslav' : role === 'mark' ? 'Mark' : 'Alona'}</span>}
             <button onClick={fetchData} style={{ padding:'4px 10px', borderRadius:20, border:'1px solid rgba(255,255,255,0.2)', background:'transparent', color:'rgba(255,255,255,0.6)', fontSize:11, fontFamily:'DM Mono', cursor:'pointer' }}>↻ {format(lastUpdate,'HH:mm')}</button>
             <button onClick={()=>{localStorage.clear();window.location.reload();}} style={{ padding:'4px 10px', borderRadius:20, border:'1px solid rgba(255,255,255,0.15)', background:'transparent', color:'rgba(255,255,255,0.4)', fontSize:11, fontFamily:'DM Mono', cursor:'pointer' }}>⏏</button>
           </div>
@@ -988,9 +990,9 @@ export default function App() {
 
             {/* ── TRAINEES VIEW ── */}
             {view === 'trainees' && (() => {
-                const T = role === 'vlad' ? {
+                const T = (role === 'vlad' || role === 'alona') ? {
                   title: '🌱 Мои звонки',
-                  subtitle: 'Vladyslav Horishnyi · SIP 130',
+                  subtitle: role === 'vlad' ? 'Vladyslav Horishnyi · SIP 130' : 'Alona Bondarenko · SIP 116',
                   calls_in_period: 'звонков за период',
                   avg_score: 'Ср. результат',
                   lpr: 'ЛПР',
@@ -1014,7 +1016,7 @@ export default function App() {
                   score_tooltip: 'Результат',
                 } : {
                   title: '🌱 Nowi handlowcy',
-                  subtitle: 'Vladyslav Horishnyi (SIP 130) · Mark Fedorov (SIP 131)',
+                  subtitle: 'Vladyslav Horishnyi (SIP 130) · Mark Fedorov (SIP 131) · Alona Bondarenko (SIP 116)',
                   calls_in_period: 'rozmów w tym okresie',
                   avg_score: 'Śr. wynik',
                   lpr: 'LPR',
@@ -1045,9 +1047,10 @@ export default function App() {
 
                 <div style={{ display:'grid', gridTemplateColumns: isTrainee ? '1fr' : '1fr 1fr', gap:20 }}>
                   {[
-                    { name:'Vladyslav Horishnyi', shortName:'Vlad', calls: vladPhone, color:'#3A5BC7', colorLight:'#EEF2FF' },
-                    { name:'Mark Fedorov', shortName:'Mark', calls: markPhone, color:'#2D7A5A', colorLight:'#EDF7F2' },
-                  ].filter(({ name }) => !isTrainee || (role === 'vlad' && name === 'Vladyslav Horishnyi') || (role === 'mark' && name === 'Mark Fedorov'))
+                    { name:'Vladyslav Horishnyi', shortName:'Vlad',  calls: vladPhone,  color:'#3A5BC7', colorLight:'#EEF2FF' },
+                    { name:'Mark Fedorov',        shortName:'Mark',  calls: markPhone,  color:'#2D7A5A', colorLight:'#EDF7F2' },
+                    { name:'Alona Bondarenko',    shortName:'Alona', calls: alonaPhone, color:'#9B3DB8', colorLight:'#F7EEFF' },
+                  ].filter(({ name }) => !isTrainee || (role === 'vlad' && name === 'Vladyslav Horishnyi') || (role === 'mark' && name === 'Mark Fedorov') || (role === 'alona' && name === 'Alona Bondarenko'))
                   .map(({ name, shortName, calls, color, colorLight }) => {
                     const withScore = calls.filter(c => c.wynik_procentowy != null);
                     const avg = withScore.length ? Math.round(withScore.reduce((a,b) => a + b.wynik_procentowy, 0) / withScore.length) : null;
@@ -1758,8 +1761,8 @@ function CallComments({callId, role}){
   const [comments,setComments]=us([]);
   const [text,setText]=us('');
   const [saving,setSaving]=us(false);
-  const isTrainee=role==='vlad'||role==='mark';
-  const author=role==='vlad'?'Vladyslav Horishnyi':role==='mark'?'Mark Fedorov':null;
+  const isTrainee=role==='vlad'||role==='mark'||role==='alona';
+  const author=role==='vlad'?'Vladyslav Horishnyi':role==='mark'?'Mark Fedorov':role==='alona'?'Alona Bondarenko':null;
 
   const load=async()=>{
     const {data}=await supabase.from('call_comments').select('*').eq('call_id',callId).order('created_at',{ascending:true});
@@ -1782,7 +1785,7 @@ function CallComments({callId, role}){
     await load();
   };
 
-  const isRu = role === 'vlad';
+  const isRu = role === 'vlad' || role === 'alona';
   const statusColor={pending:'#C07A1A',accepted:'#1A7A4A',rejected:'#C0392B'};
   const statusBg={pending:'#FEF8EC',accepted:'#EDF7F2',rejected:'#FEF2F0'};
   const statusLabel=isRu
@@ -1828,7 +1831,7 @@ function CallDetail({call,isOpen,onToggle}){
   const {useState:us}=React;
   const [showDialog,setShowDialog]=us(false);
   const role=localStorage.getItem('nowima_role')||'admin';
-  const mgr=call.sip==='123'||call.manager==='Beata Janoszka'?'Beata':call.sip==='130'||call.manager==='Vladyslav Horishnyi'?'Vlad':call.sip==='131'||call.manager==='Mark Fedorov'?'Mark':'Kamil';
+  const mgr=call.sip==='123'||call.manager==='Beata Janoszka'?'Beata':call.sip==='130'||call.manager==='Vladyslav Horishnyi'?'Vlad':call.sip==='131'||call.manager==='Mark Fedorov'?'Mark':call.sip==='116'||call.manager==='Alona Bondarenko'?'Alona':'Kamil';
   const mgrColor=mgr==='Beata'?'#5A171E':mgr==='Vlad'?'#3A5BC7':mgr==='Mark'?'#2D7A5A':'#2D6A4F';
   const pct=call.wynik_procentowy;
   const sukces=call.sukces_poziom;

@@ -38,7 +38,7 @@ const BITRIX_WEBHOOK = 'https://nowima.bitrix24.pl/rest/1/vv0k0rhzmcqmv58z/';
 const MANAGERS = [
   { name: 'Vladyslav Horishnyi', userId: '8994', key: 'vlad' },
   { name: 'Mark Fedorov',        userId: '8992', key: 'mark' },
-  { name: 'Alona Bondarenko',    userId: 'ALONA_BITRIX_ID', key: 'alona' }, // TODO: replace ALONA_BITRIX_ID
+  { name: 'Alona Bondarenko',    userId: '9152', key: 'alona' },
 ];
 
 const ONBOARDING_PLANS = {

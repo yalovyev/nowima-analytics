@@ -144,14 +144,16 @@ module.exports = async (req, res) => {
 
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
 
-  // Parse date param (YYYY-MM-DD), default to today Warsaw time
+  // Parse date params (YYYY-MM-DD), default to today Warsaw time
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Warsaw' }));
   const pad = n => String(n).padStart(2, '0');
   const todayStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
-  const dateParam = req.query && req.query.date ? req.query.date : todayStr;
+  const q = req.query || {};
+  const dateFrom_d = q.date_from || q.date || todayStr;
+  const dateTo_d   = q.date_to   || q.date || todayStr;
 
-  const dateFrom = `${dateParam}T00:00:00`;
-  const dateTo   = `${dateParam}T23:59:59`;
+  const dateFrom = `${dateFrom_d}T00:00:00`;
+  const dateTo   = `${dateTo_d}T23:59:59`;
 
   // Pobierz rozmowy z Supabase (rzeczywiste dane Zadarma)
   const sipMap = { vlad: '130', mark: '131', alona: '116' };
@@ -160,7 +162,7 @@ module.exports = async (req, res) => {
     const sip = sipMap[key];
     try {
       const rows = await supabaseGet(
-        `/rest/v1/calls?select=duration&sip=eq.${sip}&call_time=gte.${dateParam}T00:00:00&call_time=lte.${dateParam}T23:59:59&limit=1000`
+        `/rest/v1/calls?select=duration&sip=eq.${sip}&call_time=gte.${dateFrom_d}T00:00:00&call_time=lte.${dateTo_d}T23:59:59&limit=1000`
       );
       const arr = Array.isArray(rows) ? rows : [];
       callsFromSupabase[key] = {
@@ -172,7 +174,7 @@ module.exports = async (req, res) => {
     }
   }));
 
-  const result = { date: dateParam, plans: ONBOARDING_PLANS, managers: {} };
+  const result = { date_from: dateFrom_d, date_to: dateTo_d, plans: ONBOARDING_PLANS, managers: {} };
 
   await Promise.all(MANAGERS.map(async ({ name, userId, key }) => {
     const stats = await getStatsForManager(userId, dateFrom, dateTo);

@@ -214,18 +214,20 @@ export default function App() {
   }, [role]);
   useEffect(() => { if (view === 'portfolio') fetchCompanies(); }, [view, fetchCompanies]);
 
-  // Fetch Bitrix KPI for trainees tab — always today's date
+  // Fetch Bitrix KPI for trainees tab — synced with selected period
   useEffect(() => {
     if (view !== 'trainees') return;
     setBitrixKpiLoading(true);
     const pad = n => String(n).padStart(2, '0');
-    const now = new Date();
-    const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
-    fetch(`/api/bitrix-stats?date=${dateStr}`)
+    const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    const { start, end } = getRange(0);
+    const dateFrom = fmt(start);
+    const dateTo   = fmt(end);
+    fetch(`/api/bitrix-stats?date_from=${dateFrom}&date_to=${dateTo}`)
       .then(r => r.json())
       .then(data => { setBitrixKpi(data); setBitrixKpiLoading(false); })
       .catch(() => setBitrixKpiLoading(false));
-  }, [view]);
+  }, [view, period, customStart, customEnd, getRange]);
 
   // Filtered calls by manager + source
   const calls = useMemo(() => {
@@ -1179,7 +1181,7 @@ export default function App() {
                           };
                           return (
                             <div style={{ marginBottom:16 }}>
-                              <div style={{ fontSize:10, fontFamily:'DM Mono', textTransform:'uppercase', color:C.text3, marginBottom:8, letterSpacing:'0.06em' }}>Aktywność dziś · Bitrix24</div>
+                              <div style={{ fontSize:10, fontFamily:'DM Mono', textTransform:'uppercase', color:C.text3, marginBottom:8, letterSpacing:'0.06em' }}>Aktywność · {period === 'day' ? 'Dziś' : period === 'yesterday' ? 'Wczoraj' : period === 'week' ? 'Ten tydzień' : period === 'month' ? 'Ten miesiąc' : period === 'custom' ? `${customStart||'...'} — ${customEnd||'...'}` : 'Okres'} · Bitrix24</div>
                               <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6 }}>
                                 {kpiTiles.map(({ icon, label, val, plan }) => (
                                   <div key={label} style={{ background: tileBg(val, plan), border:`1px solid ${plan > 0 && val >= plan ? C.greenBorder || '#9AD5BC' : C.border}`, borderRadius:10, padding:'8px 10px', textAlign:'center' }}>
